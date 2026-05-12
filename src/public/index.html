@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Sales Assistant</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e0e0e0; height: 100vh; display: flex; }
+a { color: #4fc3f7; }
+
+/* Sidebar */
+#sidebar { width: 280px; background: #1a1a1a; border-right: 1px solid #2a2a2a; display: flex; flex-direction: column; flex-shrink: 0; }
+#sidebar h2 { padding: 18px 20px 12px; font-size: 16px; font-weight: 600; color: #fff; border-bottom: 1px solid #2a2a2a; }
+#sidebar .status { padding: 8px 20px 14px; font-size: 12px; color: #4caf50; display: flex; align-items: center; gap: 6px; }
+#sidebar .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #4caf50; }
+#chatList { flex: 1; overflow-y: auto; }
+#chatList .item { padding: 14px 20px; cursor: pointer; border-bottom: 1px solid #222; transition: background .15s; display: flex; flex-direction: column; gap: 3px; }
+#chatList .item:hover { background: #252525; }
+#chatList .item.active { background: #2a2a40; border-left: 3px solid #7c4dff; padding-left: 17px; }
+#chatList .item .name { font-size: 14px; font-weight: 500; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#chatList .item .preview { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#chatList .item .time { font-size: 11px; color: #666; }
+
+/* Main */
+#main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#main .empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #555; font-size: 16px; flex-direction: column; gap: 8px; }
+#main .chat-header { padding: 16px 24px; border-bottom: 1px solid #2a2a2a; font-size: 15px; font-weight: 600; color: #fff; flex-shrink: 0; }
+#messages { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+#messages::-webkit-scrollbar { width: 6px; }
+#messages::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+/* Message bubbles */
+.msg { max-width: 75%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+.msg.customer { background: #2a2a2a; align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.me { background: #1a3a5c; align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg .trans { margin-top: 8px; padding-top: 8px; border-top: 1px solid #444; font-size: 13px; color: #aaa; }
+.msg .trans::before { content: '🇨🇳 '; font-size: 11px; }
+.msg .meta { font-size: 11px; color: #666; margin-bottom: 4px; }
+
+/* Suggestions */
+.suggestions { margin: 4px 0 8px 0; align-self: flex-start; width: 100%; max-width: 600px; }
+.suggestions .title { font-size: 12px; color: #888; margin-bottom: 6px; }
+.suggestions .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.suggestions .sug-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #444; background: #1e1e1e; color: #ccc; cursor: pointer; font-size: 12px; transition: all .15s; }
+.suggestions .sug-btn:hover { background: #333; border-color: #7c4dff; color: #fff; }
+
+/* Reply input */
+#replyBox { padding: 16px 24px; border-top: 1px solid #2a2a2a; display: flex; gap: 10px; flex-shrink: 0; }
+#replyBox textarea { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #ddd; padding: 10px 14px; font-size: 14px; font-family: inherit; resize: none; height: 44px; line-height: 1.4; outline: none; }
+#replyBox textarea:focus { border-color: #7c4dff; }
+#replyBox button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; }
+#replyBox .btn-send { background: #7c4dff; color: #fff; }
+#replyBox .btn-send:hover { background: #651fff; }
+#replyBox .btn-ai { background: #1e1e1e; color: #aaa; border: 1px solid #444; }
+#replyBox .btn-ai:hover { background: #2a2a2a; color: #fff; }
+
+/* Popup / overlay */
+#aiPopup { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.6); z-index: 100; justify-content: center; align-items: center; }
+#aiPopup.show { display: flex; }
+#aiPopup .box { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 24px; width: 500px; max-width: 90vw; }
+#aiPopup .box h3 { font-size: 15px; margin-bottom: 12px; color: #fff; }
+#aiPopup .box textarea { width: 100%; height: 80px; background: #111; border: 1px solid #333; border-radius: 8px; color: #ddd; padding: 10px; font-family: inherit; font-size: 14px; outline: none; resize: vertical; }
+#aiPopup .box textarea:focus { border-color: #7c4dff; }
+#aiPopup .box .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+#aiPopup .box button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+#aiPopup .box .btn-gen { background: #7c4dff; color: #fff; }
+#aiPopup .box .btn-cancel { background: #333; color: #aaa; }
+#aiPopup .box .result { margin-top: 16px; padding: 12px; background: #111; border-radius: 8px; color: #ccc; font-size: 14px; max-height: 200px; overflow-y: auto; display: none; }
+#aiPopup .box .result .actions { margin-top: 10px; }
+#aiPopup .box .result .btn-use { background: #4caf50; color: #fff; }
+
+/* Reply Modal */
+#replyModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.7); z-index: 200; justify-content: center; align-items: center; }
+#replyModal.show { display: flex; }
+#replyModal .modal { background: #1a1a1a; border: 1px solid #333; border-radius: 14px; width: 700px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+#replyModal .modal-header { padding: 16px 20px; border-bottom: 1px solid #2a2a2a; flex-shrink: 0; }
+#replyModal .modal-header .msg-preview { font-size:13px; color:#ddd; margin-top:6px; padding:8px 12px; background:#111; border-radius:6px; max-height:80px; overflow-y:auto; }
+#replyModal .modal-header .msg-preview .zh { font-size:12px; color:#888; margin-top:4px; }
+#replyModal .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+#replyModal .modal-body .opt-cards { display: flex; flex-direction: column; gap: 8px; }
+#replyModal .modal-body .opt-card { padding: 12px 16px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; cursor: pointer; transition: all .15s; }
+#replyModal .modal-body .opt-card:hover { background: #252525; border-color: #555; }
+#replyModal .modal-body .opt-card.selected { border-color: #7c4dff; background: #1a1a30; }
+#replyModal .modal-body .opt-card .label { font-size: 11px; color: #7c4dff; font-weight: 600; margin-bottom: 4px; }
+#replyModal .modal-body .opt-card .en { font-size: 13px; color: #ddd; }
+#replyModal .modal-body .opt-card .zh { font-size: 12px; color: #888; margin-top: 4px; }
+#replyModal .modal-footer { padding: 16px 20px; border-top: 1px solid #2a2a2a; flex-shrink: 0; }
+#replyModal .modal-footer textarea { width: 100%; background:#111; border:1px solid #333; border-radius:8px; color:#ddd; padding:10px 14px; font-family:inherit; font-size:14px; resize:vertical; min-height:60px; outline:none; }
+#replyModal .modal-footer textarea:focus { border-color:#7c4dff; }
+#replyModal .modal-footer .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; }
+#replyModal .modal-footer .actions button { padding:8px 18px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
+#replyModal .modal-footer .btn-en { background:#7c4dff; color:#fff; }
+#replyModal .modal-footer .btn-zh { background:#e91e63; color:#fff; }
+#replyModal .modal-footer .btn-cancel { background:#333; color:#aaa; }
+#replyModal .modal-footer .btn-retry { background:transparent; color:#888; border:1px solid #444; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <h2>💬 Chats</h2>
+  <div class="status">Connected</div>
+  <div id="chatList"></div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div class="empty" id="emptyState">
+    <div style="font-size:40px">📱</div>
+    <div>Select a conversation or wait for new messages</div>
+  </div>
+  <div class="chat-header" id="chatHeader" style="display:none"></div>
+  <div id="messages"></div>
+  <div id="replyBox" style="display:none">
+    <textarea id="replyInput" placeholder="Type your reply... (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+    <button class="btn-ai" onclick="openAIPopup()" title="AI 帮你写回复">✨ AI</button>
+    <button class="btn-send" onclick="sendReply()">Send</button>
+  </div>
+</div>
+
+<!-- AI Popup -->
+<div id="aiPopup">
+  <div class="box">
+    <h3>AI Custom Reply</h3>
+    <textarea id="aiPrompt" placeholder="输入你的要求，AI 自动生成英文回复&#10;例如：告诉客户价格可以打 9 折，但需要本周下单"></textarea>
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeAIPopup()">Cancel</button>
+      <button class="btn-gen" onclick="generateAI()">Generate ✨</button>
+    </div>
+    <div class="result" id="aiResult">
+      <div id="aiResultText"></div>
+      <div class="actions">
+        <button class="btn-use" onclick="useAIResult('en')" style="background:#7c4dff;color:#fff">Send EN 🇬🇧</button>
+        <button class="btn-use" onclick="useAIResult('zh')" style="background:#e91e63;color:#fff">Send ZH 🇨🇳</button>
+        <button class="btn-cancel" onclick="closeAIPopup()">Discard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reply Modal -->
+<div id="replyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="font-size:15px;color:#fff;margin:0">✏️ Reply to Message</h3>
+      <div class="msg-preview" id="modalMsgPreview"></div>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:10px;font-size:12px;color:#888">Click a suggestion to select, then edit below:</div>
+      <div class="opt-cards" id="modalOptCards">
+        <div style="color:#666;text-align:center;padding:30px">⏳ Generating suggestions...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <textarea id="modalEditText" placeholder="Select a suggestion above to edit it here..."></textarea>
+      <div class="actions">
+        <button class="btn-retry" onclick="retryModalSuggestions()">🔄 Retry</button>
+        <button class="btn-cancel" onclick="closeReplyModal()">Cancel</button>
+        <button class="btn-zh" onclick="sendModalReply('zh')">Send ZH 🇨🇳</button>
+        <button class="btn-en" onclick="sendModalReply('en')">Send EN 🇬🇧</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ──────────────────────────────────────────────────
+const state = {
+  chats: {},          // chatId -> { chat_id, contact_name, contact_number, last_activity, messages: [] }
+  activeChat: null,
+  aiResultText: '',
+  aiResultTextZh: '',
+};
+
+// DOM refs
+const $chatList = document.getElementById('chatList');
+const $chatHeader = document.getElementById('chatHeader');
+const $messages = document.getElementById('messages');
+const $replyBox = document.getElementById('replyBox');
+const $replyInput = document.getElementById('replyInput');
+const $emptyState = document.getElementById('emptyState');
+const $aiPopup = document.getElementById('aiPopup');
+const $aiPrompt = document.getElementById('aiPrompt');
+const $aiResult = document.getElementById('aiResult');
+const $aiResultText = document.getElementById('aiResultText');
+
+// ─── SSE Connection ─────────────────────────────────────────
+function connectSSE() {
+  const es = new EventSource('/api/events');
+
+  es.addEventListener('connected', () => {
+    document.querySelector('#sidebar .status').textContent = 'Checking...';
+    document.querySelector('#sidebar .status').style.color = '#ff9800';
+    loadChats();
+    checkWhatsAppStatus();
+  });
+
+  es.addEventListener('new_message', (e) => {
+    const msg = JSON.parse(e.data);
+    addMessage(msg);
+    updateChatList();
+  });
+
+  es.addEventListener('message_updated', (e) => {
+    const update = JSON.parse(e.data);
+    applyUpdate(update);
+  });
+
+  es.addEventListener('message_sent', (e) => {
+    const data = JSON.parse(e.data);
+    addSentMessage(data);
+    updateChatList();
+  });
+
+  es.addEventListener('chat_synced', (e) => {
+    const data = JSON.parse(e.data);
+    if (!state.chats[data.chatId]) {
+      state.chats[data.chatId] = {
+        chat_id: data.chatId,
+        contact_name: data.contactName,
+        contact_number: data.contactNumber,
+        last_activity: Date.now() / 1000,
+        messages: [],
+      };
+      loadHistory(data.chatId);
+    }
+    updateChatList();
+  });
+
+  es.onerror = () => {
+    document.querySelector('#sidebar .status').textContent = 'Reconnecting...';
+    document.querySelector('#sidebar .status').style.color = '#ff9800';
+  };
+}
+
+// ─── API Calls ──────────────────────────────────────────────
+async function loadChats() {
+  try {
+    const res = await fetch('/api/chats');
+    const chats = await res.json();
+    for (const c of chats) {
+      if (!state.chats[c.chat_id]) {
+        state.chats[c.chat_id] = { ...c, messages: [] };
+        // Load history
+        const hres = await fetch(`/api/history/${c.chat_id}`);
+        const history = await hres.json();
+        state.chats[c.chat_id].messages = history;
+      }
+    }
+    updateChatList();
+  } catch (err) { console.error('loadChats:', err); }
+}
+
+async function loadHistory(chatId) {
+  try {
+    const res = await fetch(`/api/history/${chatId}`);
+    const history = await res.json();
+    if (state.chats[chatId]) {
+      state.chats[chatId].messages = history;
+    }
+  } catch (err) { console.error('loadHistory:', err); }
+}
+
+async function apiSend(chatId, text) {
+  if (!chatId) {
+    alert('Error: No conversation selected. Please select a chat from the sidebar first.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, text }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Send failed');
+    }
+  } catch (err) {
+    alert('Send failed: ' + err.message + '\n\nMake sure the server is running (npm start).');
+    throw err;
+  }
+}
+
+async function apiCustom(chatId, prompt) {
+  const res = await fetch('/api/custom', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chatId, prompt }),
+  });
+  const data = await res.json();
+  return { en: data.reply, zh: data.zh || '' };
+}
+
+// ─── Message Handling ──────────────────────────────────────
+function addMessage(msg) {
+  if (!state.chats[msg.chatId]) {
+    state.chats[msg.chatId] = {
+      chat_id: msg.chatId,
+      contact_name: msg.contactName || 'Unknown',
+      contact_number: msg.contactNumber || '',
+      last_activity: msg.timestamp,
+      messages: [],
+    };
+  }
+
+  const chat = state.chats[msg.chatId];
+  // Avoid duplicate
+  const exists = chat.messages.find(m => m.message_id === msg.messageId);
+  if (!exists) {
+    chat.messages.push({
+      message_id: msg.messageId,
+      sender: 'customer',
+      body: msg.body,
+      translation: msg.translation,
+      suggestions: msg.suggestions || [],
+      timestamp: msg.timestamp,
+    });
+  }
+  chat.last_activity = msg.timestamp;
+  if (!chat.contact_name || chat.contact_name === 'Unknown') {
+    chat.contact_name = msg.contactName || 'Unknown';
+    chat.contact_number = msg.contactNumber || '';
+  }
+
+  renderIfActive(msg.chatId);
+  updateChatList();
+}
+
+function applyUpdate(update) {
+  const chat = state.chats[update.chatId];
+  if (!chat) return;
+
+  const msg = chat.messages.find(m => m.message_id === update.messageId);
+  if (msg) {
+    msg.translation = update.translation;
+    msg.suggestions = update.suggestions || [];
+  }
+
+  renderIfActive(update.chatId);
+}
+
+function addSentMessage(data) {
+  const chat = state.chats[data.chatId];
+  if (!chat) return;
+
+  chat.messages.push({
+    message_id: `sent_${Date.now()}`,
+    sender: 'me',
+    body: data.text,
+    translation: null,
+    suggestions: [],
+    timestamp: data.timestamp,
+  });
+  chat.last_activity = data.timestamp;
+
+  renderIfActive(data.chatId);
+  updateChatList();
+  collapseAllSuggestions();
+}
+
+// ─── Rendering ─────────────────────────────────────────────
+function updateChatList() {
+  const sorted = Object.values(state.chats)
+    .sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0));
+
+  $chatList.innerHTML = sorted.map(c => {
+    const lastMsg = c.messages.length > 0 ? c.messages[c.messages.length - 1] : null;
+    const preview = lastMsg ? (lastMsg.sender === 'me' ? 'You: ' : '') + lastMsg.body.substring(0, 40) : '';
+    const active = state.activeChat === c.chat_id ? ' active' : '';
+    return `<div class="item${active}" onclick="selectChat('${c.chat_id}')">
+      <div class="name">${esc(c.contact_name || c.chat_id.substring(0, 12))}</div>
+      <div class="preview">${esc(preview)}</div>
+      <div class="time">${fmtTime(c.last_activity)}</div>
+    </div>`;
+  }).join('');
+
+  // Update header if active
+  if (state.activeChat && state.chats[state.activeChat]) {
+    const c = state.chats[state.activeChat];
+    $chatHeader.textContent = `📞 ${c.contact_name || 'Unknown'}${c.contact_number ? ' (+' + c.contact_number + ')' : ''}`;
+  }
+}
+
+function selectChat(chatId) {
+  state.activeChat = chatId;
+  $emptyState.style.display = 'none';
+  $chatHeader.style.display = 'block';
+  $replyBox.style.display = 'flex';
+
+  renderMessages(chatId);
+  updateChatList();
+
+  // Scroll to bottom
+  setTimeout(() => { $messages.scrollTop = $messages.scrollHeight; }, 50);
+}
+
+function renderIfActive(chatId) {
+  if (state.activeChat === chatId) {
+    renderMessages(chatId);
+    setTimeout(() => { $messages.scrollTop = $messages.scrollHeight; }, 50);
+  }
+}
+
+function renderMessages(chatId) {
+  const chat = state.chats[chatId];
+  if (!chat) return;
+  $chatHeader.textContent = `📞 ${chat.contact_name || 'Unknown'}${chat.contact_number ? ' (+' + chat.contact_number + ')' : ''}`;
+
+  // Get all messages, add suggestion blocks after each customer message
+  let html = '';
+  const msgs = chat.messages || [];
+
+  for (const msg of msgs) {
+    const time = new Date(msg.timestamp * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+    if (msg.sender === 'customer') {
+      html += `<div class="msg customer" id="msg-${escId(msg.message_id)}">
+        <div class="meta">${time}</div>
+        <div>${esc(msg.body)}</div>`;
+
+      if (msg.translation) {
+        html += `<div class="trans">${esc(msg.translation)}</div>`;
+      } else if (msg.translation === null) {
+        html += `<div class="trans" style="color:#666">Translating...</div>`;
+      }
+
+      html += `</div>`;
+
+      // Show existing suggestions OR a "generate" button
+      if (msg.suggestions && msg.suggestions.length > 0) {
+        html += renderSuggestionBlock(chatId, msg.message_id, msg.suggestions);
+      } else {
+        html += `<div id="suggest-${escId(msg.message_id)}" style="margin:4px 0 8px 0;">
+          <button class="sug-btn" onclick="openReplyModal('${escAttr(chatId)}','${escAttr(msg.message_id)}')" style="font-size:12px">↩ Reply to this message</button>
+        </div>`;
+      }
+    } else {
+      html += `<div class="msg me">
+        <div class="meta">${time}</div>
+        <div>${esc(msg.body)}</div>
+      </div>`;
+    }
+  }
+
+  $messages.innerHTML = html || '<div style="color:#555;text-align:center;padding:40px">No messages yet</div>';
+}
+
+// ─── Actions ───────────────────────────────────────────────
+function useSuggestion(chatId, index) {
+  const chat = state.chats[chatId];
+  if (!chat) return;
+  const lastCustomerMsg = [...chat.messages].reverse().find(m => m.sender === 'customer');
+  if (!lastCustomerMsg || !lastCustomerMsg.suggestions[index]) return;
+
+  const s = lastCustomerMsg.suggestions[index];
+  const text = typeof s === 'string' ? s : (s.en || s);
+  $replyInput.value = text;
+  $replyInput.focus();
+}
+
+function sendReply() {
+  const text = $replyInput.value.trim();
+  if (!text || !state.activeChat) return;
+
+  apiSend(state.activeChat, text);
+  $replyInput.value = '';
+  collapseAllSuggestions();
+}
+
+// AI Popup
+function openAIPopup() {
+  $aiPrompt.value = '';
+  $aiResult.style.display = 'none';
+  $aiPopup.classList.add('show');
+  $aiPrompt.focus();
+}
+
+function closeAIPopup() {
+  $aiPopup.classList.remove('show');
+}
+
+async function generateAI() {
+  const prompt = $aiPrompt.value.trim();
+  if (!prompt || !state.activeChat) return;
+
+  document.querySelector('#aiPopup .btn-gen').disabled = true;
+  document.querySelector('#aiPopup .btn-gen').textContent = 'Generating...';
+
+  try {
+    const { en, zh } = await apiCustom(state.activeChat, prompt);
+    state.aiResultText = en;
+    state.aiResultTextZh = zh;
+    $aiResultText.innerHTML = `<div style="margin-bottom:4px;color:#aaa">🇨🇳 ${esc(zh)}</div><div style="color:#ddd">🇬🇧 ${esc(en)}</div>`;
+    $aiResult.style.display = 'block';
+  } catch (err) {
+    $aiResultText.textContent = 'Error: ' + err.message;
+    $aiResult.style.display = 'block';
+  } finally {
+    document.querySelector('#aiPopup .btn-gen').disabled = false;
+    document.querySelector('#aiPopup .btn-gen').textContent = 'Generate ✨';
+  }
+}
+
+function useAIResult(lang) {
+  const text = lang === 'zh' ? state.aiResultTextZh : state.aiResultText;
+  if (text) {
+    $replyInput.value = text;
+    closeAIPopup();
+    $replyInput.focus();
+  }
+}
+
+// ─── Keyboard ──────────────────────────────────────────────
+$replyInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendReply();
+  }
+});
+
+// ─── Helpers ───────────────────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function escId(s) {
+  return (s || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function escAttr(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderSuggestionBlock(chatId, msgId, suggestions) {
+  const safeId = escId(msgId);
+  const count = suggestions.length;
+  let cardsHtml = '';
+  const labels = ['💼 Professional', '🤝 Friendly', '🎯 Closing', '📋 Detailed', '⚡ Concise'];
+  for (let i = 0; i < suggestions.length; i++) {
+    const s = suggestions[i];
+    const en = typeof s === 'string' ? s : (s.en || s);
+    const zh = typeof s === 'string' ? '' : (s.zh || '');
+    cardsHtml += `<div class="sug-row" style="margin-bottom:8px">
+      <div class="sug-card" style="background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;">
+        <div style="font-size:11px;color:#7c4dff;margin-bottom:3px;font-weight:600">${labels[i] || `Option ${i+1}`}</div>
+        ${zh ? `<div style="font-size:12px;color:#aaa;margin-bottom:4px;">🇨🇳 ${esc(zh)}</div>` : ''}
+        <div style="font-size:13px;color:#ddd;">${esc(en)}</div>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="suggestions" id="suggest-${safeId}">
+    <button class="sug-toggle" onclick="toggleSuggestions('${safeId}')" style="padding:5px 12px;background:#1e1e1e;border:1px solid #444;border-radius:6px;color:#ccc;cursor:pointer;font-size:12px">
+      💡 ${count} AI Suggestions ▸
+    </button>
+    <div class="sug-content" id="sug-content-${safeId}" style="display:none;margin-top:8px">
+      ${cardsHtml}
+      <button class="sug-btn" onclick="openReplyModal('${escAttr(chatId)}','${escAttr(msgId)}')" style="font-size:12px;margin-top:4px">✏️ Reply to this message</button>
+    </div>
+  </div>`;
+}
+
+async function generateSuggestionsFor(chatId, messageId) {
+  const container = document.getElementById('suggest-' + escId(messageId));
+  if (!container) return;
+  container.innerHTML = '<div class="loading">⏳ Generating suggestions...</div>';
+
+  try {
+    const res = await fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, messageId }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Update message in state
+    const chat = state.chats[chatId];
+    if (chat) {
+      const msg = chat.messages.find(m => m.message_id === messageId);
+      if (msg) {
+        msg.translation = data.translation;
+        msg.suggestions = data.suggestions;
+      }
+    }
+
+    container.innerHTML = renderSuggestionBlock(chatId, messageId, data.suggestions);
+  } catch (err) {
+    container.innerHTML = `<div style="color:#e53935;font-size:12px">Error: ${esc(err.message)}</div>`;
+  }
+}
+
+function editSuggestion(rowEl) {
+  const container = rowEl.closest('.suggestions');
+  if (!container) return;
+  const panel = container.querySelector('.edit-panel');
+  const zhRef = container.querySelector('.edit-zh-ref');
+  const textarea = container.querySelector('.edit-textarea');
+  const btnSend = container.querySelector('.btn-send-edit');
+  const btnCancel = container.querySelector('.btn-cancel-edit');
+  const card = rowEl.querySelector('.sug-card');
+
+  if (!panel || !textarea) return;
+
+  // Get data from the clicked card
+  const enText = card.getAttribute('data-en');
+  const zhText = card.querySelector('[style*="color:#aaa"]');
+  zhRef.textContent = zhText ? '🇨🇳 ' + zhText.textContent.replace('🇨🇳 ', '') : '';
+
+  // Fill textarea with English text
+  textarea.value = enText;
+  panel.style.display = 'block';
+  textarea.focus();
+  textarea.select();
+
+  // Highlight selected card
+  container.querySelectorAll('.sug-card').forEach(c => c.style.borderColor = '#333');
+  card.style.borderColor = '#7c4dff';
+
+  // Wire up send
+  btnSend.onclick = async () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    await apiSend(currentActiveChatId(), text);
+    panel.style.display = 'none';
+    textarea.value = '';
+  };
+
+  // Wire up cancel
+  btnCancel.onclick = () => {
+    panel.style.display = 'none';
+    textarea.value = '';
+    container.querySelectorAll('.sug-card').forEach(c => c.style.borderColor = '#333');
+  };
+
+  // Enter to send, Escape to cancel
+  textarea.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      btnSend.click();
+    }
+    if (e.key === 'Escape') {
+      btnCancel.click();
+    }
+  };
+}
+
+function currentActiveChatId() {
+  return state.activeChat || '';
+}
+
+function toggleSuggestions(safeId) {
+  const content = document.getElementById('sug-content-' + safeId);
+  const btn = document.querySelector(`#suggest-${safeId} .sug-toggle`);
+  if (!content || !btn) return;
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    btn.innerHTML = btn.innerHTML.replace('▸', '▾');
+  } else {
+    content.style.display = 'none';
+    btn.innerHTML = btn.innerHTML.replace('▾', '▸');
+  }
+}
+
+function collapseAllSuggestions() {
+  document.querySelectorAll('.sug-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.sug-toggle').forEach(btn => btn.innerHTML = btn.innerHTML.replace('▾', '▸'));
+}
+
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+}
+
+// ─── Init ──────────────────────────────────────────────────
+connectSSE();
+
+// Poll WhatsApp connection status
+async function checkWhatsAppStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const status = await res.json();
+    const el = document.querySelector('#sidebar .status');
+    if (status.whatsappReady) {
+      el.textContent = 'Connected';
+      el.style.color = '#4caf50';
+    } else {
+      el.textContent = 'WhatsApp: scanning QR...';
+      el.style.color = '#ff9800';
+      setTimeout(checkWhatsAppStatus, 3000);
+    }
+  } catch (e) {
+    setTimeout(checkWhatsAppStatus, 3000);
+  }
+}
+
+// ─── Reply Modal ───────────────────────────────────────────────
+let modalState = { chatId: null, messageId: null, suggestions: [], selectedIdx: -1 };
+
+async function openReplyModal(chatId, messageId) {
+  modalState.chatId = chatId;
+  modalState.messageId = messageId;
+  modalState.suggestions = [];
+  modalState.selectedIdx = -1;
+
+  const modal = document.getElementById('replyModal');
+  const preview = document.getElementById('modalMsgPreview');
+  const cards = document.getElementById('modalOptCards');
+  const textarea = document.getElementById('modalEditText');
+
+  // Show customer message preview
+  const chat = state.chats[chatId];
+  const msg = chat ? chat.messages.find(m => m.message_id === messageId) : null;
+  if (msg) {
+    preview.innerHTML = `<div>${esc(msg.body)}</div>` + (msg.translation ? `<div class="zh">🇨🇳 ${esc(msg.translation)}</div>` : '');
+  } else {
+    preview.innerHTML = '<div style="color:#666">Message not found</div>';
+  }
+
+  cards.innerHTML = '<div style="color:#666;text-align:center;padding:30px">⏳ Generating suggestions...</div>';
+  textarea.value = '';
+  document.querySelector('#replyModal .btn-en').disabled = true;
+  document.querySelector('#replyModal .btn-zh').disabled = true;
+
+  modal.classList.add('show');
+
+  // Fetch suggestions
+  await fetchSuggestionsForModal();
+}
+
+async function fetchSuggestionsForModal() {
+  const cards = document.getElementById('modalOptCards');
+  try {
+    const res = await fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: modalState.chatId, messageId: modalState.messageId }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    modalState.suggestions = data.suggestions;
+    renderModalCards(data.suggestions);
+
+    // Also update translation in state
+    const chat = state.chats[modalState.chatId];
+    if (chat) {
+      const msg = chat.messages.find(m => m.message_id === modalState.messageId);
+      if (msg) { msg.translation = data.translation; msg.suggestions = data.suggestions; }
+    }
+    // Refresh preview with translation
+    const preview = document.getElementById('modalMsgPreview');
+    const msg = chat ? chat.messages.find(m => m.message_id === modalState.messageId) : null;
+    if (msg && data.translation && !preview.querySelector('.zh')) {
+      preview.innerHTML = `<div>${esc(msg.body)}</div><div class="zh">🇨🇳 ${esc(data.translation)}</div>`;
+    }
+  } catch (err) {
+    cards.innerHTML = `<div style="color:#e53935;text-align:center;padding:20px">Error: ${esc(err.message)}<br><button class="sug-btn" onclick="retryModalSuggestions()" style="margin-top:8px">🔄 Retry</button></div>`;
+  }
+}
+
+function retryModalSuggestions() {
+  document.getElementById('modalOptCards').innerHTML = '<div style="color:#666;text-align:center;padding:30px">⏳ Retrying...</div>';
+  fetchSuggestionsForModal();
+}
+
+function renderModalCards(suggestions) {
+  const cards = document.getElementById('modalOptCards');
+  const labels = ['💼 Professional', '🤝 Friendly', '🎯 Closing', '📋 Detailed', '⚡ Concise'];
+  let html = '';
+  for (let i = 0; i < suggestions.length; i++) {
+    const s = suggestions[i];
+    const en = typeof s === 'string' ? s : (s.en || s);
+    const zh = typeof s === 'string' ? '' : (s.zh || '');
+    html += `<div class="opt-card" onclick="selectModalCard(${i})" id="modalCard${i}">
+      <div class="label">${labels[i] || 'Option '+(i+1)}</div>
+      <div class="en">🇬🇧 ${esc(en)}</div>
+      ${zh ? `<div class="zh">🇨🇳 ${esc(zh)}</div>` : ''}
+    </div>`;
+  }
+  cards.innerHTML = html;
+}
+
+function selectModalCard(index) {
+  modalState.selectedIdx = index;
+  const s = modalState.suggestions[index];
+  if (!s) return;
+
+  const en = typeof s === 'string' ? s : (s.en || s);
+  const textarea = document.getElementById('modalEditText');
+  textarea.value = en;
+  textarea.focus();
+
+  // Highlight selected
+  document.querySelectorAll('#modalOptCards .opt-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('modalCard' + index)?.classList.add('selected');
+
+  // Enable send buttons
+  document.querySelector('#replyModal .btn-en').disabled = false;
+  document.querySelector('#replyModal .btn-zh').disabled = false;
+}
+
+async function sendModalReply(lang) {
+  const textarea = document.getElementById('modalEditText');
+  let text = textarea.value.trim();
+  if (!text) return;
+
+  if (lang === 'zh' && modalState.selectedIdx >= 0) {
+    // Send Chinese version if user selected a card
+    const s = modalState.suggestions[modalState.selectedIdx];
+    const zh = typeof s === 'string' ? '' : (s.zh || '');
+    // If user hasn't edited the textarea (still has EN text), use the ZH from card
+    const en = typeof s === 'string' ? s : (s.en || s);
+    if (text === en && zh) {
+      text = zh;
+    }
+    // Otherwise send whatever is in the textarea (user may have typed their own Chinese)
+  }
+
+  await apiSend(modalState.chatId, text);
+  closeReplyModal();
+  collapseAllSuggestions();
+}
+
+function closeReplyModal() {
+  document.getElementById('replyModal').classList.remove('show');
+}
+
+</script>
+</body>
+</html>
