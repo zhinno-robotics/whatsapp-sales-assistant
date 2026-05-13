@@ -22,6 +22,15 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// CORS — allow browser extension side panel to access API
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 // Serve static files + explicit index route
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -212,57 +221,107 @@ app.post('/api/suggest', async (req, res) => {
   }
 });
 
+// Transcribe a voice message (uses separate STT provider — OpenRouter GPT-4o)
+app.post('/api/transcribe', async (req, res) => {
+  const { chatId, messageId } = req.body;
+  if (!chatId || !messageId) return res.status(400).json({ error: 'chatId and messageId required' });
+
+  try {
+    const rawClient = waClient.getClient();
+    const chat = await rawClient.getChatById(chatId);
+    const messages = await chat.fetchMessages({ limit: 50 });
+    const msg = messages.find(m => m.id._serialized === messageId);
+
+    if (!msg || !msg.hasMedia) {
+      return res.status(404).json({ error: 'Voice message not found or no media' });
+    }
+
+    const media = await msg.downloadMedia();
+    if (!media || !media.data) {
+      return res.status(500).json({ error: 'Failed to download voice media' });
+    }
+
+    const base64Audio = media.data;
+    const mimeType = media.mimetype || 'audio/ogg; codecs=opus';
+
+    // Use STT provider (OpenRouter GPT-4o) for transcription
+    const sttUrl = `${config.stt.baseURL}/chat/completions`;
+
+    // Determine audio format for the model
+    const format = mimeType.includes('ogg') || mimeType.includes('opus') ? 'ogg' : 'mp3';
+
+    const sttResponse = await fetch(sttUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.stt.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.stt.model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Transcribe this voice message to text. Output ONLY the transcription, nothing else.' },
+              { type: 'input_audio', input_audio: { data: base64Audio, format } },
+            ],
+          },
+        ],
+        max_tokens: 500,
+      }),
+    });
+
+    if (!sttResponse.ok) {
+      const errBody = await sttResponse.text();
+      throw new Error(`STT API error ${sttResponse.status}: ${errBody}`);
+    }
+
+    const sttData = await sttResponse.json();
+    const transcription = sttData.choices[0].message.content.trim();
+
+    // Save transcription to store
+    store.saveTranslation(messageId, transcription);
+
+    // Broadcast update
+    broadcast('message_updated', {
+      chatId,
+      messageId,
+      translation: null,
+      suggestions: [],
+      transcription: transcription,
+    });
+
+    res.json({ transcription });
+  } catch (err) {
+    console.error('Transcribe error:', err.message);
+    res.status(500).json({ error: 'Voice transcription failed: ' + err.message });
+  }
+});
+
 // ============================================================
 // WhatsApp Message Handler
 // ============================================================
 
 async function onWhatsAppMessage(msg) {
   // Save to DB
-  store.saveMessage(msg.chatId, msg.messageId, 'customer', msg.body, msg.timestamp);
+  const bodyText = msg.isVoice ? '' : (msg.body || '');
+  store.saveMessage(msg.chatId, msg.messageId, 'customer', bodyText, msg.timestamp);
   store.updateContact(msg.chatId, msg.contactName, msg.contactNumber);
 
-  // Push to browser immediately (without translation/suggestions yet)
+  console.log(chalk.dim(`  📨 ${msg.isVoice ? '[VOICE]' : ''} "${bodyText.substring(0, 40)}" from ${msg.contactName}`));
+
+  // Push to browser immediately (no auto-translation — user clicks "Translate" button)
   broadcast('new_message', {
     chatId: msg.chatId,
     messageId: msg.messageId,
-    body: msg.body,
+    body: bodyText,
     timestamp: msg.timestamp,
     contactName: msg.contactName,
     contactNumber: msg.contactNumber,
     translation: null,
     suggestions: [],
+    isVoice: msg.isVoice || false,
   });
-
-  // Run AI pipeline (translation + suggestions) asynchronously
-  const history = store.getHistory(msg.chatId, config.contextWindow);
-
-  try {
-    console.log(chalk.dim(`  [AI] Processing: "${msg.body.substring(0, 40)}..."`));
-    const result = await processIncoming(msg, history);
-    store.saveTranslation(msg.messageId, result.translation);
-
-    // Push updated message with translation + suggestions
-    broadcast('message_updated', {
-      chatId: msg.chatId,
-      messageId: msg.messageId,
-      translation: result.translation,
-      suggestions: result.suggestions,
-    });
-  } catch (err) {
-    console.error(chalk.red('  [AI] Pipeline failed:'), err.message);
-    broadcast('message_updated', {
-      chatId: msg.chatId,
-      messageId: msg.messageId,
-      translation: `[Translation failed: ${err.message}]`,
-      suggestions: [
-        'Thank you for your message. I will get back to you shortly.',
-        'Thanks for reaching out! Let me get back to you soon.',
-        'I appreciate your patience. I will follow up shortly.',
-        'Got it. I will respond as soon as possible.',
-        'Thanks for your message. I will reply shortly.',
-      ],
-    });
-  }
 }
 
 // ============================================================

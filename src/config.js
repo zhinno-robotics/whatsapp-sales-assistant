@@ -2,11 +2,18 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 module.exports = {
-  // AI API
+  // AI API (text: translation / suggestions)
   llm: {
     baseURL: process.env.LLM_BASE_URL || 'https://api.deepseek.com/v1',
     apiKey: process.env.LLM_API_KEY || '',
     model: process.env.LLM_MODEL || 'deepseek-chat',
+  },
+
+  // Voice transcription (separate provider — needs audio input support)
+  stt: {
+    baseURL: process.env.STT_BASE_URL || 'https://openrouter.ai/api/v1',
+    apiKey: process.env.STT_API_KEY || '',
+    model: process.env.STT_MODEL || 'openai/gpt-4o',
   },
 
   // Language settings

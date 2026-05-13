@@ -1,0 +1,18 @@
+/* Content-script styles — scoped to WhatsApp Web injected elements */
+
+/* Ensure our button is always on top */
+#__wa_assistant_toggle {
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+}
+
+/* Pulse animation when side panel closed (optional subtle nudge) */
+@keyframes wa-assistant-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  50%      { box-shadow: 0 2px 16px rgba(0,168,132,0.5); }
+}
+
+#__wa_assistant_toggle.idle {
+  animation: wa-assistant-pulse 3s ease-in-out infinite;
+}

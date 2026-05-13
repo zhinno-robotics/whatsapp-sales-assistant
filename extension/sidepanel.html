@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Sales Assistant</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0b141a; height: 100vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #e9edef;
+  }
+  #app-frame {
+    flex: 1; border: none; width: 100%;
+  }
+</style>
+</head>
+<body>
+<iframe id="app-frame" src="http://localhost:3000/?sidebar=1"></iframe>
+</body>
+</html>

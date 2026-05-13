@@ -94,24 +94,304 @@ a { color: #4fc3f7; }
 #replyModal .modal-footer .btn-zh { background:#e91e63; color:#fff; }
 #replyModal .modal-footer .btn-cancel { background:#333; color:#aaa; }
 #replyModal .modal-footer .btn-retry { background:transparent; color:#888; border:1px solid #444; }
+
+/* ── Compact / Sidebar Mode (WhatsApp mobile style) ── */
+
+/* === Dark theme (default) === */
+:root {
+  --bg-list: #111b21; --bg-header: #202c33; --bg-chat: #0b141a; --bg-msg-area: #0e1c24;
+  --bg-input: #202c33; --bg-input-field: #2a3942;
+  --text-primary: #e9edef; --text-secondary: #8696a0; --text-time: #8696a0;
+  --border: #2a3942; --border-light: #1f2c33;
+  --hover: #202c33; --active: #2a3942;
+  --send-btn: #00a884; --send-btn-text: #fff; --ai-btn-bg: #2a3942; --ai-btn-text: #8696a0;
+  --msg-customer: #202c33; --msg-me: #005c4b;
+}
+
+/* === Light theme === */
+html.light body.compact {
+  --bg-list: #ffffff; --bg-header: #f0f2f5; --bg-chat: #efeae2; --bg-msg-area: #efeae2;
+  --bg-input: #f0f2f5; --bg-input-field: #ffffff;
+  --text-primary: #111b21; --text-secondary: #667781; --text-time: #667781;
+  --border: #e9edef; --border-light: #f0f2f5;
+  --hover: #f5f6f6; --active: #e9edef;
+  --send-btn: #00a884; --send-btn-text: #fff; --ai-btn-bg: #e9edef; --ai-btn-text: #667781;
+  --msg-customer: #ffffff; --msg-me: #d9fdd3;
+}
+
+html.compact body { flex-direction: column !important; }
+
+/* === Sidebar: chat list (default view) === */
+html.compact #sidebar {
+  width: 100% !important; flex: 1; overflow-y: auto; flex-shrink: 1;
+  background: var(--bg-list); border-right: none; display: flex; flex-direction: column;
+}
+html.compact #sidebar.hide { display: none !important; }
+
+/* Header bar with title + toggles */
+html.compact #sidebar h2 {
+  background: var(--bg-header); padding: 8px 14px; font-size: 15px; font-weight: 500;
+  color: var(--text-primary); border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px; margin: 0;
+}
+html.compact #sidebar .status {
+  padding: 5px 14px; font-size: 10px; background: var(--bg-list);
+  border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+}
+html.compact .hdr-toggle {
+  font-size: 10px; cursor: pointer; padding: 2px 8px; border-radius: 10px;
+  border: 1px solid var(--border); color: var(--text-secondary);
+  white-space: nowrap; user-select: none; margin-left: auto;
+}
+html.compact .hdr-toggle.on { background: var(--send-btn); color: var(--send-btn-text); border-color: var(--send-btn); }
+
+/* === Contact list items — WhatsApp mobile style === */
+html.compact #chatList { flex: 1; overflow-y: auto; }
+html.compact #chatList .item {
+  padding: 10px 14px; border-bottom: 1px solid var(--border-light);
+  background: var(--bg-list); display: flex; flex-direction: row; align-items: center; gap: 12px;
+  transition: background .12s; cursor: pointer;
+}
+html.compact #chatList .item:hover { background: var(--hover); }
+html.compact #chatList .item.active { background: var(--active); }
+
+/* Avatar: circular, initial letter, colored background */
+html.compact #chatList .item .avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 500; color: #fff; text-transform: uppercase;
+}
+html.compact #chatList .item .info { flex: 1; min-width: 0; }
+html.compact #chatList .item .name {
+  color: var(--text-primary); font-size: 14px; font-weight: 400;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+html.compact #chatList .item .preview {
+  color: var(--text-secondary); font-size: 12px; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+html.compact #chatList .item .meta { text-align: right; flex-shrink: 0; }
+html.compact #chatList .item .time {
+  color: var(--text-time); font-size: 10px; white-space: nowrap;
+}
+html.compact #chatList .item .group-tag {
+  font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-top: 4px; display: inline-block;
+  background: #2a3942; color: #8696a0;
+}
+html.light body.compact #chatList .item .group-tag { background: #e9edef; color: #667781; }
+
+/* Groups divider */
+html.compact #chatList .divider {
+  padding: 8px 14px 4px; font-size: 10px; font-weight: 500; letter-spacing: .5px;
+  color: var(--send-btn); text-transform: uppercase; flex-shrink: 0;
+  background: var(--bg-list); border-bottom: 1px solid var(--border-light);
+}
+
+/* === Main: chat view (hidden until contact clicked) === */
+html.compact #main {
+  flex: 1; min-height: 0; display: none; flex-direction: column;
+  background: var(--bg-chat);
+}
+html.compact #main.active { display: flex !important; }
+
+html.compact #main .chat-header {
+  background: var(--bg-header); padding: 8px 10px; font-size: 14px; font-weight: 500;
+  color: var(--text-primary); border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* Back button — large, clear circle */
+html.compact #backBtn {
+  display: none; cursor: pointer; font-size: 20px; color: var(--text-secondary);
+  width: 36px; height: 36px; align-items: center; justify-content: center;
+  border-radius: 50%; flex-shrink: 0; user-select: none; line-height: 1;
+}
+html.compact #backBtn.visible { display: flex !important; }
+html.compact #backBtn:hover { background: var(--hover); }
+
+html.compact #emptyState { display: none !important; }
+
+html.compact #messages {
+  flex: 1; padding: 10px 12px; gap: 8px; overflow-y: auto;
+  background: var(--bg-msg-area);
+}
+html.compact .msg { max-width: 82%; font-size: 13px; padding: 8px 10px; }
+html.compact .msg.customer { background: var(--msg-customer); color: var(--text-primary); }
+html.compact .msg.me { background: var(--msg-me); color: var(--text-primary); }
+
+html.compact #replyBox {
+  padding: 8px 10px; gap: 6px; flex-shrink: 0; background: var(--bg-input);
+}
+html.compact #replyBox textarea {
+  height: 34px; font-size: 13px; padding: 7px 10px;
+  background: var(--bg-input-field); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 8px; outline: none;
+}
+html.compact #replyBox textarea:focus { border-color: var(--send-btn); }
+html.compact #replyBox button { padding: 6px 10px; font-size: 12px; white-space: nowrap; border-radius: 8px; border: none; cursor: pointer; }
+html.compact #replyBox .btn-send { background: var(--send-btn); color: var(--send-btn-text); }
+html.compact #replyBox .btn-ai { background: var(--ai-btn-bg); color: var(--ai-btn-text); border: 1px solid var(--border); }
+
+/* === Modals — WhatsApp themed === */
+
+/* Overlay */
+html.compact #aiPopup,
+html.compact #replyModal {
+  background: rgba(0,0,0,.55);
+}
+
+/* AI Popup — container */
+html.compact #aiPopup .box {
+  width: 100%; max-width: 100%; border-radius: 0;
+  background: var(--bg-header); color: var(--text-primary);
+  border: 1px solid var(--border); padding: 16px;
+  margin: auto 0 0 0; max-height: 90vh; overflow-y: auto;
+  align-self: flex-end;
+}
+html.compact #aiPopup .box h3 {
+  font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 10px;
+}
+html.compact #aiPopup .box textarea {
+  width: 100%; height: 72px; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 10px;
+  font-family: inherit; font-size: 13px; outline: none; resize: vertical;
+}
+html.compact #aiPopup .box textarea:focus { border-color: var(--send-btn); }
+html.compact #aiPopup .box .actions {
+  display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;
+}
+html.compact #aiPopup .box button {
+  padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 500; transition: opacity .15s;
+}
+html.compact #aiPopup .box button:active { opacity: .7; }
+html.compact #aiPopup .box .btn-gen { background: var(--send-btn); color: var(--send-btn-text); }
+html.compact #aiPopup .box .btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+html.compact #aiPopup .box .result {
+  margin-top: 14px; padding: 12px; background: var(--bg-msg-area);
+  border-radius: 8px; font-size: 13px; border: 1px solid var(--border);
+}
+html.compact #aiPopup .box .result textarea {
+  width: 100%; min-height: 50px; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-family: inherit; font-size: 13px; resize: vertical; outline: none;
+}
+html.compact #aiPopup .box .result textarea:focus { border-color: var(--send-btn); }
+html.compact #aiPopup .box .result .btn-use { border-radius: 8px; padding: 7px 16px; font-size: 12px; margin: 4px 4px 0 0; }
+html.compact #aiPopup .box .result .btn-use:first-of-type { background: var(--send-btn) !important; color: var(--send-btn-text) !important; }
+html.compact #aiPopup .box .result .btn-use:last-of-type { background: var(--ai-btn-bg) !important; color: var(--ai-btn-text) !important; border: 1px solid var(--border) !important; }
+
+/* Reply Modal — container */
+html.compact #replyModal .modal {
+  width: 100%; max-width: 100%; border-radius: 0; max-height: 100vh;
+  background: var(--bg-header); color: var(--text-primary);
+  border: none; display: flex; flex-direction: column; overflow: hidden;
+}
+html.compact #replyModal .modal-header {
+  padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+html.compact #replyModal .modal-header h3 {
+  font-size: 14px !important; font-weight: 500; color: var(--text-primary) !important; margin: 0 0 6px;
+}
+html.compact #replyModal .modal-header .msg-preview {
+  font-size: 12px; color: var(--text-primary); margin-top: 4px;
+  padding: 8px 12px; background: var(--msg-customer); border-radius: 8px;
+  max-height: 70px; overflow-y: auto;
+}
+html.compact #replyModal .modal-header .msg-preview .zh {
+  font-size: 11px; color: var(--text-secondary); margin-top: 3px;
+}
+
+html.compact #replyModal .modal-body {
+  flex: 1; overflow-y: auto; padding: 8px 14px;
+}
+html.compact #replyModal .modal-body .opt-cards {
+  display: flex; flex-direction: column;
+}
+html.compact #replyModal .modal-body .opt-card.selected {
+  border-color: var(--send-btn) !important; background: var(--active);
+}
+
+/* Suggestions toggle button */
+html.compact #modalToggleSuggestions {
+  color: var(--text-secondary) !important;
+}
+
+html.compact #replyModal .modal-footer {
+  padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--bg-header);
+}
+html.compact #replyModal .modal-footer textarea {
+  width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-family: inherit; font-size: 13px; resize: vertical; min-height: 50px; outline: none;
+}
+html.compact #replyModal .modal-footer textarea:focus { border-color: var(--send-btn); }
+html.compact #replyModal .modal-footer .actions {
+  display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap;
+}
+html.compact #replyModal .modal-footer .actions button {
+  padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 500; transition: opacity .15s;
+}
+html.compact #replyModal .modal-footer .actions button:active { opacity: .7; }
+html.compact #replyModal .modal-footer .btn-en { background: var(--send-btn); color: var(--send-btn-text); }
+html.compact #replyModal .modal-footer .btn-zh { background: var(--send-btn); color: var(--send-btn-text); }
+html.compact #replyModal .modal-footer .btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+html.compact #replyModal .modal-footer .btn-retry { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+html.compact #replyModal .modal-footer .btn-trans { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+html.compact #replyModal .modal-footer #modalTranslation { background: var(--bg-msg-area); }
+
+/* AI popup result textarea (Chinese — editable) */
+html.compact #aiResultZh {
+  width: 100% !important; min-height: 80px; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-family: inherit; font-size: 13px; resize: vertical; outline: none;
+}
+html.compact #aiResultZh:focus { border-color: var(--send-btn); }
+
+/* Reply modal textarea — larger */
+html.compact #replyModal .modal-footer textarea {
+  width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-family: inherit; font-size: 13px; resize: vertical; min-height: 70px; outline: none;
+}
+html.compact #aiResultZh:focus { border-color: var(--send-btn); }
+html.compact .btn-trans { border-radius: 8px; cursor: pointer; font-size: 12px; padding: 7px 14px; }
+
+html.compact #compactStatusBar { display: none !important; }
 </style>
+<script>// Prevent FOUC in sidebar mode
+(function(){if(window.location.search.includes('sidebar=1')){document.documentElement.classList.add('compact');}})();
+</script>
 </head>
 <body>
 
 <!-- Sidebar -->
 <div id="sidebar">
-  <h2>💬 Chats</h2>
+  <h2>
+    💬 Chats
+    <span class="hdr-toggle on" id="toggleGroups" onclick="toggleGroupFilter()" title="Show/hide groups">Groups</span>
+    <span class="hdr-toggle" id="toggleTheme" onclick="toggleTheme()" title="Light/dark mode">🌙</span>
+  </h2>
   <div class="status">Connected</div>
   <div id="chatList"></div>
 </div>
 
 <!-- Main -->
 <div id="main">
+  <div id="compactStatusBar" style="display:none;padding:4px 14px;font-size:11px;color:#888;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;gap:6px">
+    <span class="cs-dot" style="width:7px;height:7px;border-radius:50%;background:#ff9800;display:inline-block"></span>
+    <span class="cs-text">Connecting...</span>
+  </div>
   <div class="empty" id="emptyState">
     <div style="font-size:40px">📱</div>
     <div>Select a conversation or wait for new messages</div>
   </div>
-  <div class="chat-header" id="chatHeader" style="display:none"></div>
+  <div class="chat-header" id="chatHeader" style="display:none">
+    <div id="backBtn">←</div>
+    <span id="chatHeaderText"></span>
+  </div>
   <div id="messages"></div>
   <div id="replyBox" style="display:none">
     <textarea id="replyInput" placeholder="Type your reply... (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
@@ -130,10 +410,12 @@ a { color: #4fc3f7; }
       <button class="btn-gen" onclick="generateAI()">Generate ✨</button>
     </div>
     <div class="result" id="aiResult">
-      <div id="aiResultText"></div>
-      <div class="actions">
-        <button class="btn-use" onclick="useAIResult('en')" style="background:#7c4dff;color:#fff">Send EN 🇬🇧</button>
-        <button class="btn-use" onclick="useAIResult('zh')" style="background:#e91e63;color:#fff">Send ZH 🇨🇳</button>
+      <textarea id="aiResultZh" placeholder="AI-generated reply in Chinese (editable)"></textarea>
+      <div id="aiResultEn" style="display:none;margin-top:6px;padding:8px;background:var(--bg-msg-area);border-radius:6px;font-size:12px;color:var(--text-secondary)"></div>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn-trans" onclick="translateAIResult()">🌐 EN</button>
+        <button class="btn-use" onclick="sendAIResult('zh')">Send ZH</button>
+        <button class="btn-use" onclick="sendAIResult('en')">Send EN</button>
         <button class="btn-cancel" onclick="closeAIPopup()">Discard</button>
       </div>
     </div>
@@ -148,18 +430,20 @@ a { color: #4fc3f7; }
       <div class="msg-preview" id="modalMsgPreview"></div>
     </div>
     <div class="modal-body">
-      <div style="margin-bottom:10px;font-size:12px;color:#888">Click a suggestion to select, then edit below:</div>
-      <div class="opt-cards" id="modalOptCards">
+      <button id="modalToggleSuggestions" class="sug-toggle" onclick="toggleModalSuggestions()" style="background:var(--bg-input-field);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;width:100%;text-align:left">💡 5 AI Suggestions ▸</button>
+      <div class="opt-cards" id="modalOptCards" style="display:none;margin-top:6px;max-height:180px;overflow-y:auto;gap:6px">
         <div style="color:#666;text-align:center;padding:30px">⏳ Generating suggestions...</div>
       </div>
     </div>
     <div class="modal-footer">
-      <textarea id="modalEditText" placeholder="Select a suggestion above to edit it here..."></textarea>
+      <textarea id="modalEditText" placeholder="Select a suggestion above to edit the Chinese reply..."></textarea>
+      <div id="modalTranslation" style="display:none;margin-top:6px;padding:6px 10px;border-radius:6px;font-size:12px;background:var(--bg-msg-area, #111);color:var(--text-secondary, #aaa)"></div>
       <div class="actions">
+        <button class="btn-trans" onclick="translateModalText()" style="background:transparent;color:var(--text-secondary, #aaa);border:1px solid var(--border, #444)">🌐 Translate</button>
         <button class="btn-retry" onclick="retryModalSuggestions()">🔄 Retry</button>
         <button class="btn-cancel" onclick="closeReplyModal()">Cancel</button>
-        <button class="btn-zh" onclick="sendModalReply('zh')">Send ZH 🇨🇳</button>
-        <button class="btn-en" onclick="sendModalReply('en')">Send EN 🇬🇧</button>
+        <button class="btn-zh" onclick="sendModalReply('zh')">Send ZH</button>
+        <button class="btn-en" onclick="sendModalReply('en')">Send EN</button>
       </div>
     </div>
   </div>
@@ -184,7 +468,6 @@ const $emptyState = document.getElementById('emptyState');
 const $aiPopup = document.getElementById('aiPopup');
 const $aiPrompt = document.getElementById('aiPrompt');
 const $aiResult = document.getElementById('aiResult');
-const $aiResultText = document.getElementById('aiResultText');
 
 // ─── SSE Connection ─────────────────────────────────────────
 function connectSSE() {
@@ -230,8 +513,12 @@ function connectSSE() {
   });
 
   es.onerror = () => {
-    document.querySelector('#sidebar .status').textContent = 'Reconnecting...';
-    document.querySelector('#sidebar .status').style.color = '#ff9800';
+    const s = document.querySelector('#sidebar .status');
+    if (s) { s.textContent = 'Reconnecting...'; s.style.color = '#ff9800'; }
+    const cs = document.querySelector('#compactStatusBar .cs-text');
+    if (cs) cs.textContent = 'Reconnecting...';
+    const cd = document.querySelector('#compactStatusBar .cs-dot');
+    if (cd) cd.style.background = '#ff9800';
   };
 }
 
@@ -317,6 +604,8 @@ function addMessage(msg) {
       translation: msg.translation,
       suggestions: msg.suggestions || [],
       timestamp: msg.timestamp,
+      isVoice: msg.isVoice || false,
+      transcription: msg.transcription || null,
     });
   }
   chat.last_activity = msg.timestamp;
@@ -337,6 +626,7 @@ function applyUpdate(update) {
   if (msg) {
     msg.translation = update.translation;
     msg.suggestions = update.suggestions || [];
+    if (update.transcription) msg.transcription = update.transcription;
   }
 
   renderIfActive(update.chatId);
@@ -417,17 +707,32 @@ function renderMessages(chatId) {
     const time = new Date(msg.timestamp * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
     if (msg.sender === 'customer') {
-      html += `<div class="msg customer" id="msg-${escId(msg.message_id)}">
-        <div class="meta">${time}</div>
-        <div>${esc(msg.body)}</div>`;
-
-      if (msg.translation) {
-        html += `<div class="trans">${esc(msg.translation)}</div>`;
-      } else if (msg.translation === null) {
-        html += `<div class="trans" style="color:#666">Translating...</div>`;
+      if (msg.isVoice) {
+        // Voice message display
+        const transcribed = msg.transcription;
+        const cid = escAttr(chatId);
+        const mid = escAttr(msg.message_id);
+        html += '<div class="msg customer" id="msg-' + escId(msg.message_id) + '">';
+        html += '<div class="meta">' + time + '</div>';
+        html += '<div>🎤 <em style="color:var(--text-secondary)">Voice Message</em></div>';
+        if (transcribed) {
+          html += '<div class="trans">' + esc(transcribed) + '</div>';
+          html += '<div class="trans" style="color:var(--send-btn);cursor:pointer;margin-top:4px" onclick="translateMsg(\'' + cid + '\',\'' + mid + '\')">🌐 Translate</div>';
+        } else {
+          html += '<div class="trans" style="color:var(--send-btn);cursor:pointer" onclick="transcribeVoice(\'' + cid + '\',\'' + mid + '\')">🎤 Transcribe</div>';
+        }
+        html += '</div>';
+      } else {
+        html += '<div class="msg customer" id="msg-' + escId(msg.message_id) + '">';
+        html += '<div class="meta">' + time + '</div>';
+        html += '<div>' + esc(msg.body) + '</div>';
+        if (msg.translation) {
+          html += '<div class="trans">' + esc(msg.translation) + '</div>';
+        } else {
+          html += '<div class="trans" style="color:var(--text-secondary, #888);cursor:pointer" onclick="translateMsg(\'' + escAttr(chatId) + '\',\'' + escAttr(msg.message_id) + '\')">🌐 Translate</div>';
+        }
+        html += '</div>';
       }
-
-      html += `</div>`;
 
       // Show existing suggestions OR a "generate" button
       if (msg.suggestions && msg.suggestions.length > 0) {
@@ -471,15 +776,24 @@ function sendReply() {
 }
 
 // AI Popup
+$aiPopup.addEventListener('click', function(e) {
+  if (e.target === $aiPopup) closeAIPopup();
+});
+
+// Reply Modal — click outside to close
+document.getElementById('replyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReplyModal();
+});
+
 function openAIPopup() {
   $aiPrompt.value = '';
   $aiResult.style.display = 'none';
+  document.getElementById('aiResultZh').value = '';
+  document.getElementById('aiResultEn').style.display = 'none';
   $aiPopup.classList.add('show');
   $aiPrompt.focus();
-}
-
-function closeAIPopup() {
-  $aiPopup.classList.remove('show');
+  // Escape to close
+  document.addEventListener('keydown', escClosePopup);
 }
 
 async function generateAI() {
@@ -491,12 +805,15 @@ async function generateAI() {
 
   try {
     const { en, zh } = await apiCustom(state.activeChat, prompt);
-    state.aiResultText = en;
     state.aiResultTextZh = zh;
-    $aiResultText.innerHTML = `<div style="margin-bottom:4px;color:#aaa">🇨🇳 ${esc(zh)}</div><div style="color:#ddd">🇬🇧 ${esc(en)}</div>`;
+    state.aiResultText = en;
+    // Primary: Chinese (editable)
+    document.getElementById('aiResultZh').value = zh || '';
+    document.getElementById('aiResultEn').textContent = '';
+    document.getElementById('aiResultEn').style.display = 'none';
     $aiResult.style.display = 'block';
   } catch (err) {
-    $aiResultText.textContent = 'Error: ' + err.message;
+    document.getElementById('aiResultZh').value = 'Error: ' + err.message;
     $aiResult.style.display = 'block';
   } finally {
     document.querySelector('#aiPopup .btn-gen').disabled = false;
@@ -504,14 +821,42 @@ async function generateAI() {
   }
 }
 
-function useAIResult(lang) {
-  const text = lang === 'zh' ? state.aiResultTextZh : state.aiResultText;
+async function translateAIResult() {
+  const zhText = document.getElementById('aiResultZh').value.trim();
+  if (!zhText) return;
+  const enEl = document.getElementById('aiResultEn');
+  enEl.textContent = '⏳ Translating...';
+  enEl.style.display = 'block';
+  try {
+    const res = await fetch('/api/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: state.activeChat, prompt: 'Translate the following Chinese text to English. Only output the translation, nothing else:\n\n' + zhText }),
+    });
+    const data = await res.json();
+    state.aiResultText = data.reply || data.zh || '';
+    enEl.textContent = '🇬🇧 ' + (state.aiResultText || '(no translation)');
+  } catch (e) {
+    enEl.textContent = '⚠ Translation failed';
+  }
+}
+
+function sendAIResult(lang) {
+  let text;
+  if (lang === 'zh') {
+    text = document.getElementById('aiResultZh').value.trim();
+    state.aiResultTextZh = text;
+  } else {
+    text = state.aiResultText;
+  }
   if (text) {
     $replyInput.value = text;
     closeAIPopup();
     $replyInput.focus();
   }
 }
+
+useAIResult = sendAIResult;
 
 // ─── Keyboard ──────────────────────────────────────────────
 $replyInput.addEventListener('keydown', (e) => {
@@ -683,7 +1028,272 @@ function fmtTime(ts) {
   return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
 }
 
+// ─── Voice transcription ──────────────────────────────────
+async function transcribeVoice(chatId, messageId) {
+  const el = document.getElementById('msg-' + escId(messageId));
+  if (!el) return;
+  const transEl = el.querySelector('.trans');
+  if (transEl) { transEl.textContent = '⏳ Transcribing...'; transEl.style.cursor = 'default'; transEl.onclick = null; }
+
+  try {
+    const res = await fetch('/api/transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, messageId }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Update state
+    const chat = state.chats[chatId];
+    if (chat) {
+      const msg = chat.messages.find(m => m.message_id === messageId);
+      if (msg) msg.transcription = data.transcription;
+    }
+
+    // Re-render to show transcribed text + translate button
+    if (isCompact) {
+      renderMessages(chatId);
+    } else {
+      renderIfActive(chatId);
+    }
+  } catch (err) {
+    if (transEl) {
+      transEl.textContent = '⚠ ' + (err.message || 'Failed');
+      transEl.style.color = '#e53935';
+      transEl.style.cursor = 'pointer';
+      transEl.onclick = function() { transcribeVoice(chatId, messageId); };
+    }
+  }
+}
+
 // ─── Init ──────────────────────────────────────────────────
+const isCompact = document.documentElement.classList.contains('compact');
+
+// ─── On-demand translation ──────────────────────────────────
+async function translateMsg(chatId, messageId) {
+  const el = document.getElementById('msg-' + escId(messageId));
+  if (!el) return;
+  // Show loading
+  const transEl = el.querySelector('.trans');
+  if (transEl) { transEl.textContent = '⏳ Translating...'; transEl.style.color = 'var(--text-secondary, #888)'; transEl.style.cursor = 'default'; transEl.onclick = null; }
+
+  try {
+    const res = await fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, messageId }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Update state
+    const chat = state.chats[chatId];
+    if (chat) {
+      const msg = chat.messages.find(m => m.message_id === messageId);
+      if (msg) { msg.translation = data.translation; msg.suggestions = data.suggestions; }
+    }
+
+    // Update DOM inline
+    if (transEl) {
+      transEl.textContent = data.translation || '';
+      transEl.style.color = 'var(--text-primary, #aaa)';
+      transEl.style.cursor = 'default';
+      transEl.onclick = null;
+    }
+  } catch (err) {
+    if (transEl) {
+      transEl.textContent = '⚠ ' + (err.message || 'Failed');
+      transEl.style.color = '#e53935';
+      transEl.style.cursor = 'pointer';
+      transEl.onclick = function() { translateMsg(chatId, messageId); };
+    }
+  }
+}
+
+// ─── Compact mode: WhatsApp mobile-style ────────────────────
+if (isCompact) {
+
+  // === Avatar color palette ===
+  const AVATAR_COLORS = ['#00a884','#25d366','#128c7e','#53bdeb','#5f66cd','#ff3b30','#ff9500','#ffcc02','#34c759','#007aff','#5856d6','#af52de','#ff2d55','#a2845e','#e91e63','#00bcd4'];
+  function getAvatarColor(name) {
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  }
+  function getInitial(name) {
+    return ((name || '?')[0] || '?').toUpperCase();
+  }
+
+  // === Group filter ===
+  let showGroups = false;
+  window.toggleGroupFilter = function() {
+    showGroups = !showGroups;
+    const el = document.getElementById('toggleGroups');
+    el.classList.toggle('on', showGroups);
+    el.textContent = showGroups ? 'Groups ✓' : 'Groups';
+    updateChatList();
+  };
+
+  // === Theme toggle ===
+  window.toggleTheme = function() {
+    document.documentElement.classList.toggle('light');
+    const el = document.getElementById('toggleTheme');
+    const isLight = document.documentElement.classList.contains('light');
+    el.textContent = isLight ? '☀️' : '🌙';
+  };
+
+  // === Back button ===
+  document.getElementById('backBtn').addEventListener('click', function() {
+    state.activeChat = null;
+    document.getElementById('sidebar').classList.remove('hide');
+    document.getElementById('main').classList.remove('active');
+    document.getElementById('backBtn').classList.remove('visible');
+    updateChatList();
+  });
+
+  // === Override selectChat ===
+  const origSelectChat = selectChat;
+  selectChat = function(chatId) {
+    origSelectChat(chatId);
+    document.getElementById('sidebar').classList.add('hide');
+    document.getElementById('main').classList.add('active');
+    document.getElementById('backBtn').classList.add('visible');
+    document.getElementById('replyBox').style.display = 'flex';
+    document.getElementById('emptyState').style.display = 'none';
+  };
+
+  // === Override renderMessages ===
+  renderMessages = function(chatId) {
+    const chat = state.chats[chatId];
+    if (!chat) return;
+    const name = chat.contact_name || 'Unknown';
+    const num = chat.contact_number || '';
+    document.getElementById('chatHeaderText').textContent = name + (num ? ' (+' + num + ')' : '');
+    document.getElementById('chatHeader').style.display = 'flex';
+
+    let html = '';
+    const msgs = chat.messages || [];
+    for (const msg of msgs) {
+      const time = new Date(msg.timestamp * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      if (msg.sender === 'customer') {
+        if (msg.isVoice) {
+          const cid = escAttr(chatId);
+          const mid = escAttr(msg.message_id);
+          html += '<div class="msg customer" id="msg-' + escId(msg.message_id) + '">';
+          html += '<div class="meta">' + time + '</div>';
+          html += '<div>🎤 <em style="color:var(--text-secondary)">Voice Message</em></div>';
+          if (msg.transcription) {
+            html += '<div class="trans">' + esc(msg.transcription) + '</div>';
+            html += '<div class="trans" style="color:var(--send-btn);cursor:pointer;margin-top:4px" onclick="translateMsg(\'' + cid + '\',\'' + mid + '\')">🌐 Translate</div>';
+          } else {
+            html += '<div class="trans" style="color:var(--send-btn);cursor:pointer" onclick="transcribeVoice(\'' + cid + '\',\'' + mid + '\')">🎤 Transcribe</div>';
+          }
+          html += '</div>';
+        } else {
+          html += '<div class="msg customer" id="msg-' + escId(msg.message_id) + '"><div class="meta">' + time + '</div><div>' + esc(msg.body) + '</div>';
+          if (msg.translation) {
+            html += '<div class="trans">' + esc(msg.translation) + '</div>';
+          } else {
+            html += '<div class="trans" style="color:var(--text-secondary);cursor:pointer" onclick="translateMsg(\'' + escAttr(chatId) + '\',\'' + escAttr(msg.message_id) + '\')">🌐 Translate</div>';
+          }
+          html += '</div>';
+        }
+        if (msg.suggestions && msg.suggestions.length > 0) {
+          html += renderSuggestionBlock(chatId, msg.message_id, msg.suggestions);
+        } else {
+          html += '<div id="suggest-' + escId(msg.message_id) + '" style="margin:4px 0 8px 0"><button class="sug-btn" onclick="openReplyModal(\'' + escAttr(chatId) + '\',\'' + escAttr(msg.message_id) + '\')" style="font-size:12px">↩ Reply</button></div>';
+        }
+      } else {
+        html += '<div class="msg me"><div class="meta">' + time + '</div><div>' + esc(msg.body) + '</div></div>';
+      }
+    }
+    document.getElementById('messages').innerHTML = html || '<div style="color:var(--text-secondary);text-align:center;padding:40px">No messages</div>';
+  };
+
+  // === Override updateChatList — avatars, group filtering, divider ===
+  updateChatList = function() {
+    let allChats = Object.values(state.chats);
+    const isGroup = function(id) { return (id || '').indexOf('@g.us') > 0; };
+
+    const personal = allChats.filter(function(c) { return !isGroup(c.chat_id); });
+    const groups   = allChats.filter(function(c) { return  isGroup(c.chat_id); });
+
+    personal.sort(function(a,b) { return (b.last_activity||0) - (a.last_activity||0); });
+    groups.sort(function(a,b) { return (b.last_activity||0) - (a.last_activity||0); });
+
+    var html = '';
+
+    // Personal chats
+    for (var i = 0; i < personal.length; i++) {
+      html += renderChatItem(personal[i], false);
+    }
+
+    // Group divider + group items (only when enabled)
+    if (showGroups && groups.length > 0) {
+      html += '<div class="divider">Groups &mdash; ' + groups.length + '</div>';
+      for (var j = 0; j < groups.length; j++) {
+        html += renderChatItem(groups[j], true);
+      }
+    }
+
+    $chatList.innerHTML = html;
+  };
+
+  function renderChatItem(c, isGrp) {
+    var lastMsg = c.messages.length > 0 ? c.messages[c.messages.length - 1] : null;
+    var preview = lastMsg ? (lastMsg.sender === 'me' ? 'You: ' : '') + lastMsg.body.substring(0, 40) : '';
+    var name = c.contact_name || (c.chat_id || '').substring(0, 12);
+    var active = state.activeChat === c.chat_id ? ' active' : '';
+    return '<div class="item' + active + '" onclick="selectChat(\'' + c.chat_id + '\')">' +
+      '<div class="avatar" style="background:' + getAvatarColor(name) + '">' + getInitial(name) + '</div>' +
+      '<div class="info">' +
+        '<div class="name">' + esc(name) + '</div>' +
+        '<div class="preview">' + esc(preview) + (isGrp ? ' <span class="group-tag">群</span>' : '') + '</div>' +
+      '</div>' +
+      '<div class="meta"><div class="time">' + fmtTime(c.last_activity) + '</div></div>' +
+    '</div>';
+  }
+
+  // === Override checkWhatsAppStatus ===
+  checkWhatsAppStatus = async function() {
+    try {
+      const r = await fetch('/api/status');
+      const s = await r.json();
+      const el = document.querySelector('#sidebar .status');
+      if (el) {
+        if (s.whatsappReady) { el.textContent = '● Connected'; el.style.color = '#00a884'; }
+        else { el.textContent = '○ Connecting...'; el.style.color = '#8696a0'; setTimeout(checkWhatsAppStatus, 3000); }
+      }
+    } catch(e) { setTimeout(checkWhatsAppStatus, 3000); }
+  };
+
+  // === Override SSE ===
+  connectSSE = function() {
+    const es = new EventSource('/api/events');
+    es.addEventListener('connected', () => {
+      const el = document.querySelector('#sidebar .status');
+      if (el) { el.textContent = '● Checking...'; el.style.color = '#ff9800'; }
+      loadChats(); checkWhatsAppStatus();
+    });
+    es.addEventListener('new_message', (e) => { addMessage(JSON.parse(e.data)); updateChatList(); });
+    es.addEventListener('message_updated', (e) => { applyUpdate(JSON.parse(e.data)); });
+    es.addEventListener('message_sent', (e) => { addSentMessage(JSON.parse(e.data)); updateChatList(); });
+    es.addEventListener('chat_synced', (e) => {
+      const d = JSON.parse(e.data);
+      if (!state.chats[d.chatId]) {
+        state.chats[d.chatId] = { chat_id: d.chatId, contact_name: d.contactName, contact_number: d.contactNumber, last_activity: Date.now()/1000, messages: [] };
+        loadHistory(d.chatId);
+      }
+      updateChatList();
+    });
+    es.onerror = () => {
+      const el = document.querySelector('#sidebar .status');
+      if (el) { el.textContent = '○ Reconnecting...'; el.style.color = '#8696a0'; }
+    };
+  };
+}
+
 connectSSE();
 
 // Poll WhatsApp connection status
@@ -691,14 +1301,31 @@ async function checkWhatsAppStatus() {
   try {
     const res = await fetch('/api/status');
     const status = await res.json();
+
+    // Update full-mode sidebar status
     const el = document.querySelector('#sidebar .status');
-    if (status.whatsappReady) {
-      el.textContent = 'Connected';
-      el.style.color = '#4caf50';
-    } else {
-      el.textContent = 'WhatsApp: scanning QR...';
-      el.style.color = '#ff9800';
-      setTimeout(checkWhatsAppStatus, 3000);
+    if (el) {
+      if (status.whatsappReady) {
+        el.textContent = 'Connected';
+        el.style.color = '#4caf50';
+      } else {
+        el.textContent = 'WhatsApp: scanning QR...';
+        el.style.color = '#ff9800';
+      }
+    }
+
+    // Update compact-mode status bar
+    const csText = document.querySelector('#compactStatusBar .cs-text');
+    const csDot = document.querySelector('#compactStatusBar .cs-dot');
+    if (csText && csDot) {
+      if (status.whatsappReady) {
+        csText.textContent = 'Connected';
+        csDot.style.background = '#4caf50';
+      } else {
+        csText.textContent = 'WhatsApp: scanning QR...';
+        csDot.style.background = '#ff9800';
+        setTimeout(checkWhatsAppStatus, 3000);
+      }
     }
   } catch (e) {
     setTimeout(checkWhatsAppStatus, 3000);
@@ -728,15 +1355,35 @@ async function openReplyModal(chatId, messageId) {
     preview.innerHTML = '<div style="color:#666">Message not found</div>';
   }
 
-  cards.innerHTML = '<div style="color:#666;text-align:center;padding:30px">⏳ Generating suggestions...</div>';
+  cards.innerHTML = '<div style="color:#666;text-align:center;padding:15px">⏳ Generating suggestions...</div>';
   textarea.value = '';
+  document.getElementById('modalTranslation').style.display = 'none';
   document.querySelector('#replyModal .btn-en').disabled = true;
   document.querySelector('#replyModal .btn-zh').disabled = true;
 
+  // Reset suggestions visibility
+  modalSuggestionsVisible = false;
+  const toggleBtn = document.getElementById('modalToggleSuggestions');
+  if (toggleBtn) toggleBtn.textContent = '💡 Suggestions ▸';
+
   modal.classList.add('show');
+
+  // Escape to close
+  document.addEventListener('keydown', escCloseModal);
 
   // Fetch suggestions
   await fetchSuggestionsForModal();
+}
+
+function escCloseModal(e) {
+  if (e.key === 'Escape') closeReplyModal();
+}
+
+function closeReplyModal() {
+  document.getElementById('replyModal').classList.remove('show');
+  document.getElementById('modalOptCards').style.display = 'none';
+  modalSuggestionsVisible = false;
+  document.removeEventListener('keydown', escCloseModal);
 }
 
 async function fetchSuggestionsForModal() {
@@ -778,18 +1425,36 @@ function retryModalSuggestions() {
 function renderModalCards(suggestions) {
   const cards = document.getElementById('modalOptCards');
   const labels = ['💼 Professional', '🤝 Friendly', '🎯 Closing', '📋 Detailed', '⚡ Concise'];
-  let html = '';
+  let html = '<div class="opt-cards-inner" style="display:flex;flex-direction:column;gap:6px">';
   for (let i = 0; i < suggestions.length; i++) {
     const s = suggestions[i];
-    const en = typeof s === 'string' ? s : (s.en || s);
-    const zh = typeof s === 'string' ? '' : (s.zh || '');
-    html += `<div class="opt-card" onclick="selectModalCard(${i})" id="modalCard${i}">
-      <div class="label">${labels[i] || 'Option '+(i+1)}</div>
-      <div class="en">🇬🇧 ${esc(en)}</div>
-      ${zh ? `<div class="zh">🇨🇳 ${esc(zh)}</div>` : ''}
-    </div>`;
+    const zh = typeof s === 'string' ? s : (s.zh || s.en || '');
+    const preview = zh.length > 50 ? zh.substring(0, 50) + '…' : zh;
+    html += '<div class="opt-card' + (modalState.selectedIdx === i ? ' selected' : '') + '" onclick="selectModalCard(' + i + ')" id="modalCard' + i + '" style="padding:8px 12px;background:var(--bg-input-field);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden">' +
+      '<span style="font-size:11px;font-weight:600;color:var(--send-btn);flex-shrink:0">' + (labels[i] || '#' + (i + 1)) + '</span>' +
+      '<span style="color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(preview) + '</span>' +
+    '</div>';
   }
+  html += '</div>';
   cards.innerHTML = html;
+
+  const btn = document.getElementById('modalToggleSuggestions');
+  if (btn) btn.textContent = '💡 ' + suggestions.length + ' Suggestions ▸';
+}
+
+// Toggle suggestions visibility
+let modalSuggestionsVisible = false;
+function toggleModalSuggestions() {
+  modalSuggestionsVisible = !modalSuggestionsVisible;
+  const cards = document.getElementById('modalOptCards');
+  const btn = document.getElementById('modalToggleSuggestions');
+  if (modalSuggestionsVisible) {
+    cards.style.display = 'block';
+    btn.textContent = (btn.textContent || '').replace('▸', '▾');
+  } else {
+    cards.style.display = 'none';
+    btn.textContent = (btn.textContent || '').replace('▾', '▸');
+  }
 }
 
 function selectModalCard(index) {
@@ -797,10 +1462,14 @@ function selectModalCard(index) {
   const s = modalState.suggestions[index];
   if (!s) return;
 
-  const en = typeof s === 'string' ? s : (s.en || s);
+  // Fill with Chinese (primary, editable)
+  const zh = typeof s === 'string' ? s : (s.zh || s.en || s);
   const textarea = document.getElementById('modalEditText');
-  textarea.value = en;
+  textarea.value = zh;
   textarea.focus();
+
+  // Clear any previous translation
+  document.getElementById('modalTranslation').style.display = 'none';
 
   // Highlight selected
   document.querySelectorAll('#modalOptCards .opt-card').forEach(c => c.classList.remove('selected'));
@@ -811,21 +1480,53 @@ function selectModalCard(index) {
   document.querySelector('#replyModal .btn-zh').disabled = false;
 }
 
+async function translateModalText() {
+  const zhText = document.getElementById('modalEditText').value.trim();
+  if (!zhText) return;
+  const el = document.getElementById('modalTranslation');
+  el.textContent = '⏳ Translating...';
+  el.style.display = 'block';
+  try {
+    const res = await fetch('/api/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: modalState.chatId || state.activeChat, prompt: 'Translate the following Chinese text to English. Only output the translation, nothing else:\n\n' + zhText }),
+    });
+    const data = await res.json();
+    const en = data.reply || data.zh || '';
+    el.textContent = '🇬🇧 ' + (en || '(no translation)');
+  } catch (e) {
+    el.textContent = '⚠ Translation failed';
+  }
+}
+
 async function sendModalReply(lang) {
   const textarea = document.getElementById('modalEditText');
-  let text = textarea.value.trim();
-  if (!text) return;
+  const zhText = textarea.value.trim();
+  if (!zhText) return;
 
-  if (lang === 'zh' && modalState.selectedIdx >= 0) {
-    // Send Chinese version if user selected a card
-    const s = modalState.suggestions[modalState.selectedIdx];
-    const zh = typeof s === 'string' ? '' : (s.zh || '');
-    // If user hasn't edited the textarea (still has EN text), use the ZH from card
-    const en = typeof s === 'string' ? s : (s.en || s);
-    if (text === en && zh) {
-      text = zh;
+  let text = zhText;
+
+  if (lang === 'en') {
+    // Use the translated English from modalTranslation if available
+    const transEl = document.getElementById('modalTranslation');
+    const transText = (transEl.textContent || '').replace('🇬🇧 ', '').trim();
+    if (transText && transText !== '(no translation)' && transText !== '⚠ Translation failed' && transText.indexOf('⏳') !== 0) {
+      text = transText;
+    } else {
+      // No translation available — auto-translate
+      try {
+        const res = await fetch('/api/custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatId: modalState.chatId, prompt: 'Translate to English:\n\n' + zhText }),
+        });
+        const data = await res.json();
+        text = data.reply || data.zh || zhText;
+      } catch (e) {
+        text = zhText; // fallback to Chinese
+      }
     }
-    // Otherwise send whatever is in the textarea (user may have typed their own Chinese)
   }
 
   await apiSend(modalState.chatId, text);
@@ -833,8 +1534,19 @@ async function sendModalReply(lang) {
   collapseAllSuggestions();
 }
 
+function closeAIPopup() {
+  $aiPopup.classList.remove('show');
+  document.removeEventListener('keydown', escClosePopup);
+}
+
+function escClosePopup(e) {
+  if (e.key === 'Escape') closeAIPopup();
+}
+
 function closeReplyModal() {
   document.getElementById('replyModal').classList.remove('show');
+  document.getElementById('modalOptCards').style.display = 'none';
+  modalSuggestionsVisible = false;
 }
 
 </script>

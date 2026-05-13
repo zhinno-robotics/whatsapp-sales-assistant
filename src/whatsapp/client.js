@@ -106,11 +106,22 @@ async function createClient(handlers) {
 
   // ============ Message Handler ============
 
-  client.on('message_create', async (msg) => {
+  async function handleMessage(msg) {
     try {
       if (msg.fromMe) return;
-      if (!msg.body || msg.body.trim().length === 0) return;
-      if (msg.type !== 'chat' && msg.type !== 'text') return;
+      if (msg.type === 'vcard') return; // skip contact cards
+
+      const isText = msg.type === 'chat' || msg.type === 'text';
+      const isVoice = msg.type === 'ptt' || msg.type === 'audio' || (msg.hasMedia && !msg.body);
+      const isOther = msg.type === 'image' || msg.type === 'video' || msg.type === 'sticker' ||
+                      msg.type === 'document' || msg.type === 'location' || msg.type === 'poll';
+
+      if (!isText && !isVoice) {
+        if (!isOther) console.log('[client] Skipping msg type:', msg.type, 'hasMedia:', msg.hasMedia);
+        return;
+      }
+
+      if (isText && (!msg.body || msg.body.trim().length === 0)) return;
 
       let contactName = 'Unknown';
       let contactNumber = '';
@@ -123,17 +134,22 @@ async function createClient(handlers) {
       const messageObj = {
         chatId: msg.from,
         messageId: msg.id ? msg.id._serialized : `msg_${Date.now()}`,
-        body: msg.body.trim(),
+        body: msg.body ? msg.body.trim() : '',
         timestamp: msg.timestamp || Math.floor(Date.now() / 1000),
         contactName,
         contactNumber,
+        isVoice,
       };
 
+      console.log(`[client] 📨 ${isVoice ? 'VOICE' : 'TEXT'} from ${contactName}: ${isVoice ? '(audio)' : messageObj.body.substring(0, 40)}`);
       if (onMessage) await onMessage(messageObj);
     } catch (err) {
       console.error('❌ Error processing incoming message:', err.message);
     }
-  });
+  }
+
+  client.on('message_create', handleMessage);
+  client.on('message', handleMessage); // backup: also listen on 'message'
 
   // ============ Shutdown ============
 
