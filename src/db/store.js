@@ -162,6 +162,7 @@ function updateContact(chatId, name, number) {
  */
 function getActiveChats(limit = 20) {
   return Object.values(data.conversations)
+    .filter(c => c.chat_id && !/@newsletter|@broadcast|status@/.test(c.chat_id))
     .sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0))
     .slice(0, limit);
 }

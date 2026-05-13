@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#25d366"/>
+      <stop offset="100%" stop-color="#00a884"/>
+    </radialGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect x="4" y="4" width="120" height="120" rx="28" ry="28" fill="url(#bg)"/>
+  <!-- Chat bubble -->
+  <path d="M93 34H35c-6 0-11 5-11 11v38c0 6 5 11 11 11h16l14 14V94h28c6 0 11-5 11-11V45c0-6-5-11-11-11z" fill="#fff" opacity="0.95"/>
+  <!-- AI sparkle (4-point star) -->
+  <path d="M64 48l3 8 9 2-7 6 2 9-7-5-7 5 2-9-7-6 9-2z" fill="#00a884"/>
+  <!-- Small dots for tech feel -->
+  <circle cx="52" cy="58" r="2.5" fill="#00a884" opacity="0.6"/>
+  <circle cx="76" cy="58" r="2.5" fill="#00a884" opacity="0.6"/>
+  <circle cx="52" cy="66" r="2.5" fill="#00a884" opacity="0.6"/>
+  <circle cx="64" cy="66" r="2.5" fill="#00a884" opacity="0.6"/>
+  <circle cx="76" cy="66" r="2.5" fill="#00a884" opacity="0.6"/>
+</svg>

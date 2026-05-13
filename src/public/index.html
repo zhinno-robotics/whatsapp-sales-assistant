@@ -14,6 +14,10 @@ a { color: #4fc3f7; }
 #sidebar h2 { padding: 18px 20px 12px; font-size: 16px; font-weight: 600; color: #fff; border-bottom: 1px solid #2a2a2a; }
 #sidebar .status { padding: 8px 20px 14px; font-size: 12px; color: #4caf50; display: flex; align-items: center; gap: 6px; }
 #sidebar .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #4caf50; }
+#searchBox { padding: 0 16px 10px; }
+#searchBox input { width: 100%; background: #111; border: 1px solid #333; border-radius: 8px; color: #ddd; padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
+#searchBox input:focus { border-color: #7c4dff; }
+#searchBox input::placeholder { color: #555; }
 #chatList { flex: 1; overflow-y: auto; }
 #chatList .item { padding: 14px 20px; cursor: pointer; border-bottom: 1px solid #222; transition: background .15s; display: flex; flex-direction: column; gap: 3px; }
 #chatList .item:hover { background: #252525; }
@@ -47,7 +51,7 @@ a { color: #4fc3f7; }
 
 /* Reply input */
 #replyBox { padding: 16px 24px; border-top: 1px solid #2a2a2a; display: flex; gap: 10px; flex-shrink: 0; }
-#replyBox textarea { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #ddd; padding: 10px 14px; font-size: 14px; font-family: inherit; resize: none; height: 44px; line-height: 1.4; outline: none; }
+#replyBox textarea { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #ddd; padding: 10px 14px; font-size: 14px; font-family: inherit; resize: none; min-height: 44px; max-height: 160px; overflow-y: auto; line-height: 1.4; outline: none; }
 #replyBox textarea:focus { border-color: #7c4dff; }
 #replyBox button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; }
 #replyBox .btn-send { background: #7c4dff; color: #fff; }
@@ -60,13 +64,14 @@ a { color: #4fc3f7; }
 #aiPopup.show { display: flex; }
 #aiPopup .box { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 24px; width: 500px; max-width: 90vw; }
 #aiPopup .box h3 { font-size: 15px; margin-bottom: 12px; color: #fff; }
-#aiPopup .box textarea { width: 100%; height: 80px; background: #111; border: 1px solid #333; border-radius: 8px; color: #ddd; padding: 10px; font-family: inherit; font-size: 14px; outline: none; resize: vertical; }
+#aiPopup .box textarea { width: 100%; min-height: 60px; max-height: 200px; background: #111; border: 1px solid #333; border-radius: 8px; color: #ddd; padding: 10px; font-family: inherit; font-size: 14px; outline: none; resize: none; overflow-y: auto; }
 #aiPopup .box textarea:focus { border-color: #7c4dff; }
 #aiPopup .box .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
 #aiPopup .box button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
 #aiPopup .box .btn-gen { background: #7c4dff; color: #fff; }
 #aiPopup .box .btn-cancel { background: #333; color: #aaa; }
-#aiPopup .box .result { margin-top: 16px; padding: 12px; background: #111; border-radius: 8px; color: #ccc; font-size: 14px; max-height: 200px; overflow-y: auto; display: none; }
+#aiPopup .box .result { margin-top: 16px; padding: 12px; background: #111; border-radius: 8px; color: #ccc; font-size: 14px; display: none; }
+#aiPopup .box .result textarea { width: 100%; min-height: 60px; max-height: 200px; resize: none; overflow-y: auto; }
 #aiPopup .box .result .actions { margin-top: 10px; }
 #aiPopup .box .result .btn-use { background: #4caf50; color: #fff; }
 
@@ -86,7 +91,7 @@ a { color: #4fc3f7; }
 #replyModal .modal-body .opt-card .en { font-size: 13px; color: #ddd; }
 #replyModal .modal-body .opt-card .zh { font-size: 12px; color: #888; margin-top: 4px; }
 #replyModal .modal-footer { padding: 16px 20px; border-top: 1px solid #2a2a2a; flex-shrink: 0; }
-#replyModal .modal-footer textarea { width: 100%; background:#111; border:1px solid #333; border-radius:8px; color:#ddd; padding:10px 14px; font-family:inherit; font-size:14px; resize:vertical; min-height:60px; outline:none; }
+#replyModal .modal-footer textarea { width: 100%; background:#111; border:1px solid #333; border-radius:8px; color:#ddd; padding:10px 14px; font-family:inherit; font-size:14px; resize:none; min-height:60px; max-height:200px; overflow-y:auto; outline:none; }
 #replyModal .modal-footer textarea:focus { border-color:#7c4dff; }
 #replyModal .modal-footer .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; }
 #replyModal .modal-footer .actions button { padding:8px 18px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
@@ -146,6 +151,19 @@ html.compact .hdr-toggle {
 }
 html.compact .hdr-toggle.on { background: var(--send-btn); color: var(--send-btn-text); border-color: var(--send-btn); }
 
+/* Search box — compact */
+html.compact #searchBox {
+  padding: 6px 10px; background: var(--bg-list);
+  border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+}
+html.compact #searchBox input {
+  width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s;
+}
+html.compact #searchBox input:focus { border-color: var(--send-btn); }
+html.compact #searchBox input::placeholder { color: var(--text-secondary); }
+
 /* === Contact list items — WhatsApp mobile style === */
 html.compact #chatList { flex: 1; overflow-y: auto; }
 html.compact #chatList .item {
@@ -201,14 +219,15 @@ html.compact #main .chat-header {
   display: flex; align-items: center; gap: 8px;
 }
 
-/* Back button — large, clear circle */
+/* Back button — WhatsApp-style arrow */
 html.compact #backBtn {
-  display: none; cursor: pointer; font-size: 20px; color: var(--text-secondary);
+  display: none; cursor: pointer; color: var(--text-secondary);
   width: 36px; height: 36px; align-items: center; justify-content: center;
-  border-radius: 50%; flex-shrink: 0; user-select: none; line-height: 1;
+  border-radius: 50%; flex-shrink: 0; user-select: none; transition: background .15s;
 }
+html.compact #backBtn svg { display: block; }
 html.compact #backBtn.visible { display: flex !important; }
-html.compact #backBtn:hover { background: var(--hover); }
+html.compact #backBtn:hover { background: var(--hover); color: var(--text-primary); }
 
 html.compact #emptyState { display: none !important; }
 
@@ -224,7 +243,7 @@ html.compact #replyBox {
   padding: 8px 10px; gap: 6px; flex-shrink: 0; background: var(--bg-input);
 }
 html.compact #replyBox textarea {
-  height: 34px; font-size: 13px; padding: 7px 10px;
+  min-height: 40px; max-height: 140px; font-size: 13px; padding: 10px 12px; resize: none; overflow-y: auto;
   background: var(--bg-input-field); border: 1px solid var(--border); color: var(--text-primary);
   border-radius: 8px; outline: none;
 }
@@ -253,9 +272,9 @@ html.compact #aiPopup .box h3 {
   font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 10px;
 }
 html.compact #aiPopup .box textarea {
-  width: 100%; height: 72px; background: var(--bg-input-field); border: 1px solid var(--border);
+  width: 100%; min-height: 60px; max-height: 180px; background: var(--bg-input-field); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text-primary); padding: 10px;
-  font-family: inherit; font-size: 13px; outline: none; resize: vertical;
+  font-family: inherit; font-size: 13px; outline: none; resize: none; overflow-y: auto;
 }
 html.compact #aiPopup .box textarea:focus { border-color: var(--send-btn); }
 html.compact #aiPopup .box .actions {
@@ -273,9 +292,9 @@ html.compact #aiPopup .box .result {
   border-radius: 8px; font-size: 13px; border: 1px solid var(--border);
 }
 html.compact #aiPopup .box .result textarea {
-  width: 100%; min-height: 50px; background: var(--bg-input-field); border: 1px solid var(--border);
+  width: 100%; min-height: 60px; max-height: 180px; background: var(--bg-input-field); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
-  font-family: inherit; font-size: 13px; resize: vertical; outline: none;
+  font-family: inherit; font-size: 13px; resize: none; overflow-y: auto; outline: none;
 }
 html.compact #aiPopup .box .result textarea:focus { border-color: var(--send-btn); }
 html.compact #aiPopup .box .result .btn-use { border-radius: 8px; padding: 7px 16px; font-size: 12px; margin: 4px 4px 0 0; }
@@ -344,9 +363,9 @@ html.compact #replyModal .modal-footer #modalTranslation { background: var(--bg-
 
 /* AI popup result textarea (Chinese — editable) */
 html.compact #aiResultZh {
-  width: 100% !important; min-height: 80px; background: var(--bg-input-field); border: 1px solid var(--border);
+  width: 100% !important; min-height: 60px; max-height: 180px; background: var(--bg-input-field); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
-  font-family: inherit; font-size: 13px; resize: vertical; outline: none;
+  font-family: inherit; font-size: 13px; resize: none; overflow-y: auto; outline: none;
 }
 html.compact #aiResultZh:focus { border-color: var(--send-btn); }
 
@@ -354,7 +373,7 @@ html.compact #aiResultZh:focus { border-color: var(--send-btn); }
 html.compact #replyModal .modal-footer textarea {
   width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
-  font-family: inherit; font-size: 13px; resize: vertical; min-height: 70px; outline: none;
+  font-family: inherit; font-size: 13px; resize: none; min-height: 60px; max-height: 200px; overflow-y: auto; outline: none;
 }
 html.compact #aiResultZh:focus { border-color: var(--send-btn); }
 html.compact .btn-trans { border-radius: 8px; cursor: pointer; font-size: 12px; padding: 7px 14px; }
@@ -375,6 +394,7 @@ html.compact #compactStatusBar { display: none !important; }
     <span class="hdr-toggle" id="toggleTheme" onclick="toggleTheme()" title="Light/dark mode">🌙</span>
   </h2>
   <div class="status">Connected</div>
+  <div id="searchBox"><input type="text" id="searchInput" placeholder="Search contacts..." autocomplete="off" /></div>
   <div id="chatList"></div>
 </div>
 
@@ -389,7 +409,7 @@ html.compact #compactStatusBar { display: none !important; }
     <div>Select a conversation or wait for new messages</div>
   </div>
   <div class="chat-header" id="chatHeader" style="display:none">
-    <div id="backBtn">←</div>
+    <div id="backBtn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>
     <span id="chatHeaderText"></span>
   </div>
   <div id="messages"></div>
@@ -468,6 +488,24 @@ const $emptyState = document.getElementById('emptyState');
 const $aiPopup = document.getElementById('aiPopup');
 const $aiPrompt = document.getElementById('aiPrompt');
 const $aiResult = document.getElementById('aiResult');
+const $searchInput = document.getElementById('searchInput');
+
+// ─── Search ──────────────────────────────────────────────────
+$searchInput.addEventListener('input', () => updateChatList());
+$searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = $chatList.querySelector('.item');
+    if (item) {
+      const chatId = item.getAttribute('onclick').match(/'([^']+)'/)?.[1];
+      if (chatId) selectChat(chatId);
+    }
+  }
+  if (e.key === 'Escape') {
+    $searchInput.value = '';
+    updateChatList();
+  }
+});
 
 // ─── SSE Connection ─────────────────────────────────────────
 function connectSSE() {
@@ -499,6 +537,7 @@ function connectSSE() {
 
   es.addEventListener('chat_synced', (e) => {
     const data = JSON.parse(e.data);
+    if (isChannelChat(data.chatId)) return;
     if (!state.chats[data.chatId]) {
       state.chats[data.chatId] = {
         chat_id: data.chatId,
@@ -528,6 +567,7 @@ async function loadChats() {
     const res = await fetch('/api/chats');
     const chats = await res.json();
     for (const c of chats) {
+      if (isChannelChat(c.chat_id)) continue;
       if (!state.chats[c.chat_id]) {
         state.chats[c.chat_id] = { ...c, messages: [] };
         // Load history
@@ -583,6 +623,7 @@ async function apiCustom(chatId, prompt) {
 
 // ─── Message Handling ──────────────────────────────────────
 function addMessage(msg) {
+  if (isChannelChat(msg.chatId)) return;
   if (!state.chats[msg.chatId]) {
     state.chats[msg.chatId] = {
       chat_id: msg.chatId,
@@ -653,7 +694,15 @@ function addSentMessage(data) {
 
 // ─── Rendering ─────────────────────────────────────────────
 function updateChatList() {
+  const query = $searchInput.value.trim().toLowerCase();
   const sorted = Object.values(state.chats)
+    .filter(c => !isChannelChat(c.chat_id))
+    .filter(c => {
+      if (!query) return true;
+      const name = (c.contact_name || '').toLowerCase();
+      const num = (c.contact_number || c.chat_id || '').toLowerCase();
+      return name.includes(query) || num.includes(query);
+    })
     .sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0));
 
   $chatList.innerHTML = sorted.map(c => {
@@ -679,6 +728,7 @@ function selectChat(chatId) {
   $emptyState.style.display = 'none';
   $chatHeader.style.display = 'block';
   $replyBox.style.display = 'flex';
+  $searchInput.value = '';
 
   renderMessages(chatId);
   updateChatList();
@@ -772,6 +822,7 @@ function sendReply() {
 
   apiSend(state.activeChat, text);
   $replyInput.value = '';
+  autoResizeTextarea($replyInput);
   collapseAllSuggestions();
 }
 
@@ -809,11 +860,13 @@ async function generateAI() {
     state.aiResultText = en;
     // Primary: Chinese (editable)
     document.getElementById('aiResultZh').value = zh || '';
+    autoResizeTextarea(document.getElementById('aiResultZh'));
     document.getElementById('aiResultEn').textContent = '';
     document.getElementById('aiResultEn').style.display = 'none';
     $aiResult.style.display = 'block';
   } catch (err) {
     document.getElementById('aiResultZh').value = 'Error: ' + err.message;
+    autoResizeTextarea(document.getElementById('aiResultZh'));
     $aiResult.style.display = 'block';
   } finally {
     document.querySelector('#aiPopup .btn-gen').disabled = false;
@@ -866,7 +919,24 @@ $replyInput.addEventListener('keydown', (e) => {
   }
 });
 
+// Auto-resize textarea to fit content
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+[$replyInput, $aiPrompt, document.getElementById('aiResultZh'), document.getElementById('modalEditText')].forEach(function(ta) {
+  if (ta) {
+    ta.addEventListener('input', function() { autoResizeTextarea(ta); });
+  }
+});
+
 // ─── Helpers ───────────────────────────────────────────────
+
+/** Filter out WhatsApp Channels, Broadcasts, Newsletters */
+function isChannelChat(chatId) {
+  return chatId && /@newsletter|@broadcast|status@/.test(chatId);
+}
+
 function esc(s) {
   if (!s) return '';
   const div = document.createElement('div');
@@ -960,6 +1030,8 @@ function editSuggestion(rowEl) {
 
   // Fill textarea with English text
   textarea.value = enText;
+  autoResizeTextarea(textarea);
+  textarea.addEventListener('input', function() { autoResizeTextarea(textarea); });
   panel.style.display = 'block';
   textarea.focus();
   textarea.select();
@@ -1213,8 +1285,18 @@ if (isCompact) {
 
   // === Override updateChatList — avatars, group filtering, divider ===
   updateChatList = function() {
+    const query = $searchInput.value.trim().toLowerCase();
     let allChats = Object.values(state.chats);
     const isGroup = function(id) { return (id || '').indexOf('@g.us') > 0; };
+
+    // Search filter
+    if (query) {
+      allChats = allChats.filter(function(c) {
+        const name = (c.contact_name || '').toLowerCase();
+        const num = (c.contact_number || c.chat_id || '').toLowerCase();
+        return name.includes(query) || num.includes(query);
+      });
+    }
 
     const personal = allChats.filter(function(c) { return !isGroup(c.chat_id); });
     const groups   = allChats.filter(function(c) { return  isGroup(c.chat_id); });
@@ -1281,6 +1363,7 @@ if (isCompact) {
     es.addEventListener('message_sent', (e) => { addSentMessage(JSON.parse(e.data)); updateChatList(); });
     es.addEventListener('chat_synced', (e) => {
       const d = JSON.parse(e.data);
+      if (isChannelChat(d.chatId)) return;
       if (!state.chats[d.chatId]) {
         state.chats[d.chatId] = { chat_id: d.chatId, contact_name: d.contactName, contact_number: d.contactNumber, last_activity: Date.now()/1000, messages: [] };
         loadHistory(d.chatId);
@@ -1357,6 +1440,7 @@ async function openReplyModal(chatId, messageId) {
 
   cards.innerHTML = '<div style="color:#666;text-align:center;padding:15px">⏳ Generating suggestions...</div>';
   textarea.value = '';
+  autoResizeTextarea(textarea);
   document.getElementById('modalTranslation').style.display = 'none';
   document.querySelector('#replyModal .btn-en').disabled = true;
   document.querySelector('#replyModal .btn-zh').disabled = true;
@@ -1466,6 +1550,7 @@ function selectModalCard(index) {
   const zh = typeof s === 'string' ? s : (s.zh || s.en || s);
   const textarea = document.getElementById('modalEditText');
   textarea.value = zh;
+  autoResizeTextarea(textarea);
   textarea.focus();
 
   // Clear any previous translation

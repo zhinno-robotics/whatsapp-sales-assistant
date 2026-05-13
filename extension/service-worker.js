@@ -8,8 +8,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'complete') return;
   if (!tab.url || !tab.url.startsWith(WA_URL)) return;
 
-  chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] }).catch(() => {});
-  chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'], world: 'ISOLATED' }).catch(() => {});
+  // No content script injection — floating button removed per user request
 
   const { autoOpen } = await chrome.storage.local.get({ autoOpen: true });
   if (autoOpen) await chrome.sidePanel.open({ windowId: tab.windowId });

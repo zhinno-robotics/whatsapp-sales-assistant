@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <rect x="0" y="0" width="16" height="16" rx="3.5" ry="3.5" fill="#00a884"/>
+  <!-- Chat bubble -->
+  <path d="M12 4H4c-1 0-1.8.8-1.8 1.8v5.4c0 1 .8 1.8 1.8 1.8h2l1.8 2V13h4.2c1 0 1.8-.8 1.8-1.8V5.8c0-1-.8-1.8-1.8-1.8z" fill="#fff"/>
+  <!-- Sparkle -->
+  <path d="M8 6l.4 1 1 .2-.8.6.2 1-.8-.5-.8.5.2-1-.8-.6 1-.2z" fill="#00a884"/>
+</svg>

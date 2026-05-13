@@ -75,6 +75,20 @@ function broadcast(event, data) {
 }
 
 // ============================================================
+// Helpers
+// ============================================================
+
+/**
+ * Check if a chat ID is a channel or newsletter (NOT a real contact/group).
+ * Only filters @newsletter (WhatsApp Channels) and @broadcast (status broadcasts).
+ * @lid and @c.us are real contacts; @g.us are real groups.
+ */
+function isChannelChat(chatId) {
+  if (!chatId) return false;
+  return /@newsletter|@broadcast|status@/.test(chatId);
+}
+
+// ============================================================
 // Sync historical messages from WhatsApp on startup
 // ============================================================
 
@@ -92,6 +106,9 @@ async function syncHistoricalMessages() {
         const name = contact.name || contact.pushname || contact.number || 'Unknown';
         const number = contact.number || '';
         const chatId = chat.id._serialized;
+
+        // Skip channels, broadcasts, newsletters
+        if (isChannelChat(chatId)) continue;
 
         // Init conversation in store
         store.updateContact(chatId, name, number);
@@ -303,6 +320,9 @@ app.post('/api/transcribe', async (req, res) => {
 // ============================================================
 
 async function onWhatsAppMessage(msg) {
+  // Skip channels, broadcasts, newsletters
+  if (isChannelChat(msg.chatId)) return;
+
   // Save to DB
   const bodyText = msg.isVoice ? '' : (msg.body || '');
   store.saveMessage(msg.chatId, msg.messageId, 'customer', bodyText, msg.timestamp);
