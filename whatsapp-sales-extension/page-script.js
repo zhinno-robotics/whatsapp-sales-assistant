@@ -247,6 +247,196 @@
   }
 
   // ============================================================
+  // Voice Audio Capture via AudioContext Interception
+  // ============================================================
+  //
+  // msg.downloadMedia() does NOT populate mediaBlob in recent WA Web.
+  // Instead, we intercept the AudioContext to capture decrypted audio
+  // when the user plays a voice message. WhatsApp's own decryption
+  // pipeline feeds the audio to decodeAudioData() — we hook there.
+
+  let pendingVoiceCapture = null; // { messageId, chatId } or null
+  let capturedAudioChunks = [];
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result;
+        if (result && typeof result === 'string') {
+          resolve(result.split(',')[1]);
+        } else {
+          reject(new Error('Failed to read blob as base64'));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function installAudioContextHook() {
+    const OrigAudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!OrigAudioContext || OrigAudioContext.__wasapHooked) return;
+    OrigAudioContext.__wasapHooked = true;
+
+    const origDecodeAudioData = OrigAudioContext.prototype.decodeAudioData;
+    OrigAudioContext.prototype.decodeAudioData = function (audioData, successCallback, errorCallback) {
+      // If we're waiting for a voice capture and this is an ArrayBuffer
+      if (pendingVoiceCapture && audioData instanceof ArrayBuffer) {
+        try {
+          const wavBlob = encodeWAV(audioData);
+          blobToBase64(wavBlob).then(base64 => {
+            console.log('[wasap-page] AudioContext: captured', audioData.byteLength, 'bytes of decoded audio');
+            emitToContent('voice_audio_data', {
+              messageId: pendingVoiceCapture.messageId,
+              chatId: pendingVoiceCapture.chatId,
+              audioBase64: base64,
+              mimeType: 'audio/wav',
+              manual: true,
+            });
+            pendingVoiceCapture = null;
+          }).catch(e => {
+            console.error('[wasap-page] AudioContext: blobToBase64 failed:', e.message);
+            pendingVoiceCapture = null;
+          });
+        } catch (e) {
+          console.error('[wasap-page] AudioContext: encodeWAV failed:', e.message);
+          pendingVoiceCapture = null;
+        }
+      }
+      return origDecodeAudioData.call(this, audioData, successCallback, errorCallback);
+    };
+    console.log('[wasap-page] AudioContext hook installed');
+  }
+
+  // Convert raw PCM audio (from decodeAudioData's ArrayBuffer) to WAV blob
+  function encodeWAV(arrayBuffer) {
+    // decodeAudioData input is already decoded PCM as an AudioBuffer wrapped in ArrayBuffer...
+    // Actually, decodeAudioData INPUT is encoded (ogg/mp3), OUTPUT is AudioBuffer.
+    // We're hooking the INPUT, so audioData is the encoded/compressed stream.
+    // Just wrap it as-is (it's the original ogg/opus).
+    return new Blob([arrayBuffer], { type: 'audio/ogg' });
+  }
+
+  function setupVoiceCapture(messageId, chatId) {
+    pendingVoiceCapture = { messageId, chatId };
+    console.log('[wasap-page] Voice capture armed for', messageId);
+  }
+
+  // Voice message decrypt cache (raw buffers, no base64 — avoids call stack overflow)
+  const voiceCache = new Map();
+
+  function base64ToBytes(b64) {
+    const chars = atob(b64);
+    const bytes = new Uint8Array(chars.length);
+    for (let i = 0; i < chars.length; i++) bytes[i] = chars.charCodeAt(i);
+    return bytes;
+  }
+
+  // Try one decrypt parameter set
+  async function tryDecryptWithParams(encBytes, keyBytes, info, algo, stripMac) {
+    try {
+      const hkdfKey = await crypto.subtle.importKey('raw', keyBytes, 'HKDF', false, ['deriveBits']);
+      const expanded = await crypto.subtle.deriveBits(
+        { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: new TextEncoder().encode(info) },
+        hkdfKey, 112 * 8
+      );
+      const ex = new Uint8Array(expanded);
+      const iv = ex.slice(0, 16);
+      const cipherKey = ex.slice(16, 48);
+      const ciphertext = (stripMac && encBytes.length > 10) ? encBytes.slice(0, encBytes.length - 10) : encBytes;
+      const cryptoKey = await crypto.subtle.importKey('raw', cipherKey, algo, false, ['decrypt']);
+      const decrypted = await crypto.subtle.decrypt({ name: algo, iv }, cryptoKey, ciphertext);
+      console.log('[wasap-page] ✓ Decrypt OK — info:', info, 'algo:', algo, 'output:', decrypted.byteLength, 'bytes');
+      return decrypted;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Try multiple decrypt approaches (WA changes params across versions)
+  async function tryDecrypt(encBytes, keyBytes) {
+    const attempts = [
+      ['WhatsApp Audio Keys', 'AES-CBC', true],
+      ['WhatsApp Audio Keys', 'AES-CBC', false],
+      ['WhatsApp Audio Keys', 'AES-CTR', true],
+      ['WhatsApp Voice Keys', 'AES-CBC', true],
+      ['WhatsApp Media Keys', 'AES-CBC', true],
+    ];
+    for (const [info, algo, stripMac] of attempts) {
+      const result = await tryDecryptWithParams(encBytes, keyBytes, info, algo, stripMac);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  // Fetch from CDN and decrypt
+  async function tryFetchAndDecrypt(msg) {
+    const directPath = msg.__x_directPath || msg.directPath || msg.mediaUrl;
+    let mediaKey = msg.__x_mediaKey || msg.mediaKey;
+    if (!directPath || !mediaKey) return null;
+
+    try {
+      let keyBytes;
+      if (mediaKey instanceof Uint8Array) keyBytes = mediaKey;
+      else if (typeof mediaKey === 'string') keyBytes = base64ToBytes(mediaKey);
+      else if (mediaKey.buffer) keyBytes = new Uint8Array(mediaKey.buffer);
+      else if (Array.isArray(mediaKey)) keyBytes = new Uint8Array(mediaKey);
+      else return null;
+
+      const base = directPath.startsWith('http') ? '' : 'https://mmg.whatsapp.net';
+      const url = base + directPath;
+      console.log('[wasap-page] CDN fetch:', url.substring(0, 120));
+      const resp = await fetch(url, { mode: 'cors', credentials: 'omit' });
+      if (!resp.ok) { console.log('[wasap-page] CDN status:', resp.status); return null; }
+      const encBytes = new Uint8Array(await resp.arrayBuffer());
+      console.log('[wasap-page] CDN: got', encBytes.length, 'bytes, key:', keyBytes.length, 'bytes');
+
+      // Cache in memory for retry
+      voiceCache.set(msg.id?._serialized, {
+        encrypted: encBytes,
+        keyBytes,
+        mimetype: msg.__x_mimetype || msg.mimetype || 'audio/ogg',
+        chatId: msg.id?.remote?._serialized || msg.chatId || msg.from,
+      });
+
+      const decrypted = await tryDecrypt(encBytes, keyBytes);
+      if (decrypted) return new Blob([decrypted], { type: msg.__x_mimetype || msg.mimetype || 'audio/ogg' });
+      console.warn('[wasap-page] All decrypt approaches failed');
+      return null;
+    } catch (e) {
+      console.error('[wasap-page] CDN fetch/decrypt error:', e.message);
+      return null;
+    }
+  }
+
+  async function captureVoiceMedia(msg) {
+    const chatId = msg.id?.remote?._serialized || msg.chatId || msg.from;
+    const messageId = msg.id?._serialized;
+    if (!chatId || !messageId) return;
+
+    const blob = await tryFetchAndDecrypt(msg);
+    if (blob) {
+      const base64 = await blobToBase64(blob);
+      emitToContent('voice_audio_data', { messageId, chatId, audioBase64: base64, mimeType: blob.type || 'audio/ogg' });
+      return;
+    }
+
+    setupVoiceCapture(messageId, chatId);
+    console.log('[wasap-page] Decrypt not yet successful — awaiting AudioContext capture');
+  }
+
+  async function retryDecryptFromCache(messageId) {
+    const cached = voiceCache.get(messageId);
+    if (!cached) return null;
+    console.log('[wasap-page] Retrying decrypt from cache (' + cached.encrypted.length + ' bytes)');
+    const decrypted = await tryDecrypt(cached.encrypted, cached.keyBytes);
+    if (decrypted) return new Blob([decrypted], { type: cached.mimetype });
+    console.warn('[wasap-page] Retry decrypt still failed');
+    return null;
+  }
+
+  // ============================================================
   // Message Monitoring
   // ============================================================
 
@@ -296,6 +486,9 @@
         const serialized = serializeMessage(msg);
         if (serialized && (serialized.body || serialized.isVoice)) {
           emitToContent('new_message', serialized);
+          if (serialized.isVoice) {
+            captureVoiceMedia(msg);
+          }
         }
       } catch (e) {
         console.error('[wasap-page] Error processing new message:', e);
@@ -562,6 +755,88 @@
         break;
       }
 
+      case 'transcribe_voice': {
+        try {
+          const { chatId, messageId } = params;
+          let msg = null;
+
+          // Search all Msg collections we can find
+          const searchSources = [];
+
+          // Source 1: global Msg.models
+          const globalModels = window.Store.Msg?.models;
+          if (Array.isArray(globalModels)) searchSources.push({ name: 'Msg.models', msgs: globalModels });
+
+          // Source 2: Msg as iterable/object
+          const msgColl = window.Store.Msg;
+          if (msgColl && !Array.isArray(globalModels)) {
+            if (typeof msgColl[Symbol.iterator] === 'function') {
+              searchSources.push({ name: 'Msg(iter)', msgs: [...msgColl] });
+            } else if (typeof msgColl === 'object') {
+              searchSources.push({ name: 'Msg(obj)', msgs: Object.values(msgColl) });
+            }
+          }
+
+          // Source 3: target chat's messages
+          const chat = window.Store.Chat?.get(chatId);
+          if (chat) {
+            const raw = chat.msgs;
+            let chatMsgs = null;
+            if (raw?.models && Array.isArray(raw.models)) chatMsgs = raw.models;
+            else if (Array.isArray(raw)) chatMsgs = raw;
+            else if (raw && typeof raw === 'object') chatMsgs = Object.values(raw);
+            if (chatMsgs) searchSources.push({ name: 'chat.msgs', msgs: chatMsgs });
+          }
+
+          // Source 4: all Chat collections — search every chat
+          const chatColl = window.Store.Chat;
+          if (chatColl) {
+            const allChats = Array.isArray(chatColl.models) ? chatColl.models
+              : typeof chatColl[Symbol.iterator] === 'function' ? [...chatColl]
+              : Object.values(chatColl).filter(v => v && (v.id || v.msgs));
+            for (const c of allChats) {
+              const raw = c.msgs;
+              if (!raw) continue;
+              let msgs = null;
+              if (raw?.models && Array.isArray(raw.models)) msgs = raw.models;
+              else if (Array.isArray(raw)) msgs = raw;
+              else if (typeof raw === 'object') msgs = Object.values(raw);
+              if (msgs) searchSources.push({ name: 'chat[' + (c.id?._serialized || '?') + '].msgs', msgs });
+            }
+          }
+
+          console.log('[wasap-page] transcribe_voice: searching', searchSources.length, 'sources for', messageId);
+          for (const src of searchSources) {
+            const found = src.msgs.find(m => {
+              if (!m) return false;
+              const mid = m.id?._serialized || m.__x_id || m.key?.id;
+              return mid === messageId || String(mid) === String(messageId);
+            });
+            if (found) {
+              msg = found;
+              console.log('[wasap-page] Found message in', src.name);
+              break;
+            }
+          }
+
+          if (!msg) {
+            console.log('[wasap-page] Message not found:', messageId, '— trying cached encrypted data');
+            const blob = await retryDecryptFromCache(messageId);
+            if (blob) {
+              const base64 = await blobToBase64(blob);
+              emitToContent('voice_audio_data', { messageId, chatId, audioBase64: base64, mimeType: blob.type || 'audio/ogg', manual: true });
+              return;
+            }
+            emitToContent('voice_download_error', { messageId, chatId, error: 'Message not found — try playing the voice message first' });
+            return;
+          }
+          await captureVoiceMedia(msg);
+        } catch (e) {
+          emitToContent('voice_download_error', { messageId: params.messageId, chatId: params.chatId, error: e.message });
+        }
+        break;
+      }
+
       case 'mark_read': {
         try {
           const { chatId } = params;
@@ -646,7 +921,7 @@
       handleCommand(cmd);
     } else {
       // Queue commands that need Store (get_chats, get_messages, send_message, etc.)
-      const needsStore = ['get_chats', 'get_messages', 'send_message', 'get_contact', 'mark_read'];
+      const needsStore = ['get_chats', 'get_messages', 'send_message', 'get_contact', 'mark_read', 'transcribe_voice'];
       if (needsStore.includes(cmd.action)) {
         console.log('[wasap-page] Queueing command:', cmd.action, '(Store not ready yet)');
         commandQueue.push(cmd);
@@ -667,6 +942,7 @@
     }
     commandQueue.length = 0;
 
+    installAudioContextHook();
     startMessageMonitoring();
     emitToContent('ready', {});
   });

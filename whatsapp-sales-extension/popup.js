@@ -17,6 +17,7 @@ const DEFAULT_CONFIG = {
   customerLang: 'en',
   contextWindow: 10,
   autoOpenSidePanel: true,
+  autoTranscribe: false,
 };
 
 async function loadSettings() {
@@ -33,6 +34,7 @@ async function loadSettings() {
   document.getElementById('customerLang').value = config.customerLang;
   document.getElementById('contextWindow').value = config.contextWindow;
   document.getElementById('autoOpenSidePanel').checked = config.autoOpenSidePanel;
+  document.getElementById('autoTranscribe').checked = config.autoTranscribe || false;
 }
 
 async function saveSettings() {
@@ -60,6 +62,7 @@ async function saveSettings() {
       customerLang: document.getElementById('customerLang').value,
       contextWindow: parseInt(document.getElementById('contextWindow').value, 10) || 10,
       autoOpenSidePanel: document.getElementById('autoOpenSidePanel').checked,
+      autoTranscribe: document.getElementById('autoTranscribe').checked,
     };
 
     console.log('[popup] Saving config:', JSON.stringify(config, null, 2));

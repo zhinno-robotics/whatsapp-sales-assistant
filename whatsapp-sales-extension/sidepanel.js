@@ -35,9 +35,14 @@ function connectBackground() {
   connectAttempts++;
   const currentDelay = reconnectDelay;
   console.log(`[sidepanel] Connecting to background (attempt ${connectAttempts}, delay ${currentDelay}ms)...`);
-  updateStatus('connecting', 'Connecting...');
 
+  if (bgPort) {
+    try { bgPort.disconnect(); } catch (e) { /* ignore */ }
+    bgPort = null;
+  }
   if (connectionTimeout) clearTimeout(connectionTimeout);
+
+  updateStatus('connecting', 'Connecting...');
 
   try {
     bgPort = chrome.runtime.connect({ name: 'sidepanel' });
@@ -51,7 +56,16 @@ function connectBackground() {
     return;
   }
 
+  let handshakeDone = false;
+
   bgPort.onMessage.addListener((msg) => {
+    if (!handshakeDone && (msg.type === 'config' || msg.type === 'chats_list')) {
+      handshakeDone = true;
+      connectAttempts = 0;
+      reconnectDelay = 1000;
+      updateStatus('connected', 'WhatsApp Connected');
+      clearTimeout(connectionTimeout);
+    }
     handleBgMessage(msg);
   });
 
@@ -60,28 +74,18 @@ function connectBackground() {
     console.log('[sidepanel] Port disconnected', err ? `— ${err.message}` : '');
     bgPort = null;
     updateStatus('disconnected', 'Disconnected — reconnecting...');
-    reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+    if (!handshakeDone) {
+      // Never got config — back off
+      reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+    } else {
+      reconnectDelay = 1500; // Quick retry for established connections
+    }
     if (connectAttempts < MAX_CONNECT_ATTEMPTS) {
       setTimeout(connectBackground, reconnectDelay);
     }
   });
 
-  // Connection successful — reset backoff and request data
-  connectAttempts = 0;
-  reconnectDelay = 1000;
-  updateStatus('connecting', 'Loading data...');
-
-  // Timeout: if no config received in 5s, retry
-  connectionTimeout = setTimeout(() => {
-    if (!state.config) {
-      console.warn('[sidepanel] Timeout: no config received in 5s, reconnecting...');
-      updateStatus('disconnected', 'Timeout — reconnecting...');
-      bgPort?.disconnect();
-      bgPort = null;
-      setTimeout(connectBackground, 2000);
-    }
-  }, 5000);
-
+  // Request data
   bgPort.postMessage({ action: 'get_config' });
   bgPort.postMessage({ action: 'get_chats', params: {} });
 }
@@ -179,6 +183,42 @@ function handleBgMessage(msg) {
     case 'store_timeout':
       updateStatus('disconnected', 'WhatsApp loading — please wait or refresh the page');
       console.log('[sidepanel] Store timeout detail:', data.detail || '');
+      break;
+
+    case 'transcribing':
+      if (state.activeChat === data.chatId && state.messages[state.activeChat]) {
+        const tmsg = state.messages[state.activeChat].find(m => m.messageId === data.messageId);
+        if (tmsg) {
+          tmsg._transcribing = true;
+          renderMessages();
+        }
+      }
+      break;
+
+    case 'transcription_ready':
+      if (state.messages[data.chatId]) {
+        const trMsg = state.messages[data.chatId].find(m => m.messageId === data.messageId);
+        if (trMsg) {
+          trMsg.transcription = data.transcription;
+          trMsg._transcribing = false;
+          if (state.activeChat === data.chatId) {
+            renderMessages();
+          }
+        }
+      }
+      break;
+
+    case 'transcription_error':
+      if (state.messages[data.chatId]) {
+        const teMsg = state.messages[data.chatId].find(m => m.messageId === data.messageId);
+        if (teMsg) {
+          teMsg._transcribing = false;
+          teMsg._transcriptionError = data.error;
+          if (state.activeChat === data.chatId) {
+            renderMessages();
+          }
+        }
+      }
       break;
   }
 }
@@ -427,8 +467,15 @@ function renderMessage(msg) {
 
   if (msg.isVoice) {
     content = `<span class="voice-badge">🎤 Voice Message</span>`;
-    if (msg.translation) {
-      content += `<div class="trans">${escapeHtml(msg.translation)}</div>`;
+    if (msg._transcribing) {
+      content += `<div class="loading-inline">Transcribing...</div>`;
+    } else if (msg.transcription) {
+      content += `<div class="trans" style="border-top-color:var(--send-btn)">${escapeHtml(msg.transcription)}</div>`;
+    } else if (msg._transcriptionError) {
+      content += `<div class="trans" style="color:#ff6b6b;border-top-color:#ff6b6b">⚠️ ${escapeHtml(msg._transcriptionError)}</div>`;
+      content += `<button class="transcribe-btn" data-msgid="${escapeAttr(msg.messageId)}">🔄 Retry Transcribe</button>`;
+    } else {
+      content += `<button class="transcribe-btn" data-msgid="${escapeAttr(msg.messageId)}">📝 Transcribe</button>`;
     }
   } else if (body) {
     content = escapeHtml(body);
@@ -560,6 +607,18 @@ function sendAIResult(lang) {
   }
 }
 
+function requestTranscription(messageId) {
+  if (!state.activeChat) return;
+  const msgs = state.messages[state.activeChat] || [];
+  const msg = msgs.find(m => m.messageId === messageId);
+  if (msg) {
+    msg._transcribing = true;
+    msg._transcriptionError = null;
+    renderMessages();
+  }
+  sendToBg('transcribe_message', { messageId, chatId: state.activeChat });
+}
+
 // ============================================================
 // Reply Modal
 // ============================================================
@@ -574,8 +633,9 @@ function openReplyModal(messageId, suggestionIdx) {
   state.modalSelectedIdx = suggestionIdx !== undefined ? suggestionIdx : -1;
 
   // Set preview
+  const displayBody = msg.isVoice && msg.transcription ? msg.transcription : (msg.body || '[Voice]');
   document.getElementById('modalMsgPreview').innerHTML = `
-    <div>${escapeHtml(msg.body || '[Voice]')}</div>
+    <div>${escapeHtml(displayBody)}</div>
     ${msg.translation ? `<div class="zh">${escapeHtml(msg.translation)}</div>` : ''}
   `;
 
@@ -591,11 +651,12 @@ function openReplyModal(messageId, suggestionIdx) {
     document.getElementById('modalOptCards').style.display = 'block';
     document.getElementById('modalToggleSuggestions').textContent = '💡 5 AI Suggestions ▸';
 
-    // Request suggestions
+    // Request suggestions (use transcription for voice messages)
+    const sugBody = msg.isVoice && msg.transcription ? msg.transcription : msg.body;
     sendToBg('generate_suggestions', {
       chatId: state.activeChat,
       messageId: msg.messageId,
-      body: msg.body,
+      body: sugBody,
     });
   }
 
@@ -660,10 +721,11 @@ function toggleModalSuggestions() {
 function retryModalSuggestions() {
   if (!state.modalMsg || !state.activeChat) return;
   document.getElementById('modalOptCards').innerHTML = '<div class="loading">Regenerating...</div>';
+  const sugBody = state.modalMsg.isVoice && state.modalMsg.transcription ? state.modalMsg.transcription : state.modalMsg.body;
   sendToBg('generate_suggestions', {
     chatId: state.activeChat,
     messageId: state.modalMsg.messageId,
-    body: state.modalMsg.body,
+    body: sugBody,
   });
 }
 
@@ -834,6 +896,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const replyBtn = e.target.closest('.reply-to-msg-btn');
     if (replyBtn && replyBtn.dataset.msgid) {
       openReplyModal(replyBtn.dataset.msgid);
+      return;
+    }
+    // Transcribe button
+    const transcribeBtn = e.target.closest('.transcribe-btn');
+    if (transcribeBtn && transcribeBtn.dataset.msgid) {
+      requestTranscription(transcribeBtn.dataset.msgid);
       return;
     }
   });

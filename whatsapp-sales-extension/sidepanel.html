@@ -342,6 +342,26 @@ html.light #chatList .item .group-tag { background: #e9edef; color: #667781; }
   color: var(--text-secondary); font-size: 14px; flex-direction: column; gap: 8px;
 }
 #emptyState .icon { font-size: 40px; }
+
+/* Transcribe button */
+.transcribe-btn {
+  margin-top: 6px; padding: 5px 12px; background: var(--bg-input-field);
+  border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+  font-size: 11px; color: var(--text-secondary); font-family: inherit;
+  transition: all .15s;
+}
+.transcribe-btn:hover { background: var(--hover); border-color: var(--send-btn); color: var(--text-primary); }
+
+/* Inline loading indicator */
+.loading-inline {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  padding: 4px 0; font-size: 11px; color: var(--text-secondary);
+}
+.loading-inline::before {
+  content: ''; width: 12px; height: 12px; border: 2px solid var(--border);
+  border-top-color: var(--send-btn); border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
 </style>
 </head>
 <body>
