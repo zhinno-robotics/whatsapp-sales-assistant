@@ -5,3 +5,4 @@ data/
 .wwebjs_auth/
 .wwebjs_cache/
 dist/
+*.zip

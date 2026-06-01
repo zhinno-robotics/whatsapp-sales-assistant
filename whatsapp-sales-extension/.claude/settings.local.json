@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"e:\\\\OpenCode File\\\\WhatsApp\\\\whatsapp-sales-extension\" -Recurse -Depth 1)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Read(//e/OpenCode File/WhatsApp/**)",
+      "PowerShell(Get-Content \"e:\\\\OpenCode File\\\\WhatsApp\\\\whatsapp-sales-extension\\\\page-script.js\" | Select-Object -Index 328 | ForEach-Object { $_.ToCharArray\\(\\) | ForEach-Object { [int]$_ } })",
+      "Bash(git add *)"
+    ]
+  }
+}

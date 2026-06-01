@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp Sales Assistant",
+  "version": "2.0.0",
+  "description": "AI-powered sales assistant for WhatsApp Web — translation, reply suggestions, and smart copywriting",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "alarms",
+    "contextMenus",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://api.deepseek.com/*",
+    "https://openrouter.ai/*"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "WhatsApp Sales Assistant",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-script.js"],
+      "matches": ["https://web.whatsapp.com/*"]
+    }
+  ]
+}

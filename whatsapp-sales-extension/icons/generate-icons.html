@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<p>Open this file in a browser, then right-click each icon to save as PNG.</p>
+<canvas id="c16" width="16" height="16"></canvas>
+<canvas id="c48" width="48" height="48"></canvas>
+<canvas id="c128" width="128" height="128"></canvas>
+<script>
+function drawIcon(canvas, size) {
+  const ctx = canvas.getContext('2d');
+  // Background circle
+  ctx.fillStyle = '#00a884';
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+  ctx.fill();
+  // WhatsApp-style chat bubble
+  const s = size * 0.6;
+  const x = (size - s) / 2;
+  const y = (size - s) / 2;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(x, y, s, s * 0.8, s * 0.15);
+  ctx.fill();
+  // Tail
+  ctx.beginPath();
+  ctx.moveTo(x + s * 0.15, y + s * 0.8);
+  ctx.lineTo(x, y + s);
+  ctx.lineTo(x + s * 0.35, y + s * 0.8);
+  ctx.fill();
+  // "SA" text
+  ctx.fillStyle = '#00a884';
+  ctx.font = `bold ${size * 0.35}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SA', size/2, size * 0.45);
+}
+
+drawIcon(document.getElementById('c16'), 16);
+drawIcon(document.getElementById('c48'), 48);
+drawIcon(document.getElementById('c128'), 128);
+
+// Auto-download
+[16, 48, 128].forEach(size => {
+  const canvas = document.getElementById('c' + size);
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `icon-${size}.png`;
+    a.click();
+  });
+});
+</script>
+</body>
+</html>

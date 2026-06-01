@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Sales Assistant</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* === Dark theme (default) === */
+:root {
+  --bg-list: #111b21; --bg-header: #202c33; --bg-chat: #0b141a; --bg-msg-area: #0e1c24;
+  --bg-input: #202c33; --bg-input-field: #2a3942;
+  --text-primary: #e9edef; --text-secondary: #8696a0; --text-time: #8696a0;
+  --border: #2a3942; --border-light: #1f2c33;
+  --hover: #202c33; --active: #2a3942;
+  --send-btn: #00a884; --send-btn-text: #111b21; --ai-btn-bg: #2a3942; --ai-btn-text: #8696a0;
+  --msg-customer: #202c33; --msg-me: #005c4b;
+  --avatar-1: #00a884; --avatar-2: #0084ff; --avatar-3: #ff6b6b; --avatar-4: #ffd93d;
+  --avatar-5: #6c5ce7; --avatar-6: #fd79a8; --avatar-7: #00cec9; --avatar-8: #e17055;
+  --avatar-9: #0984e3; --avatar-10: #a29bfe; --avatar-11: #55efc4; --avatar-12: #fab1a0;
+  --avatar-13: #74b9ff; --avatar-14: #ffeaa7; --avatar-15: #dfe6e9; --avatar-16: #636e72;
+}
+
+/* === Light theme === */
+html.light {
+  --bg-list: #ffffff; --bg-header: #f0f2f5; --bg-chat: #efeae2; --bg-msg-area: #efeae2;
+  --bg-input: #f0f2f5; --bg-input-field: #ffffff;
+  --text-primary: #111b21; --text-secondary: #667781; --text-time: #667781;
+  --border: #e9edef; --border-light: #f0f2f5;
+  --hover: #f5f6f6; --active: #e9edef;
+  --send-btn: #00a884; --send-btn-text: #fff; --ai-btn-bg: #e9edef; --ai-btn-text: #667781;
+  --msg-customer: #ffffff; --msg-me: #d9fdd3;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-chat); color: var(--text-primary);
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  font-size: 13px;
+}
+
+/* === Layout === */
+#app { display: flex; flex: 1; min-height: 0; }
+
+/* Sidebar: chat list */
+#sidebar {
+  width: 100%; flex: 1; display: flex; flex-direction: column;
+  background: var(--bg-list); border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#sidebar.hide { display: none !important; }
+
+#sidebarHeader {
+  background: var(--bg-header); padding: 8px 14px; font-size: 15px; font-weight: 500;
+  color: var(--text-primary); border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+}
+#sidebarHeader .title { flex: 1; }
+
+.hdr-toggle {
+  font-size: 10px; cursor: pointer; padding: 2px 8px; border-radius: 10px;
+  border: 1px solid var(--border); color: var(--text-secondary);
+  white-space: nowrap; user-select: none;
+}
+.hdr-toggle.on { background: var(--send-btn); color: var(--send-btn-text); border-color: var(--send-btn); }
+
+#statusBar {
+  padding: 5px 14px; font-size: 10px; background: var(--bg-list);
+  border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+}
+#statusBar .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+#statusBar .dot.connected { background: var(--send-btn); }
+#statusBar .dot.connecting { background: #ff9800; }
+#statusBar .dot.disconnected { background: #f44336; }
+
+#searchBox {
+  padding: 6px 10px; background: var(--bg-list);
+  border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+}
+#searchBox input {
+  width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s;
+}
+#searchBox input:focus { border-color: var(--send-btn); }
+#searchBox input::placeholder { color: var(--text-secondary); }
+
+#chatList { flex: 1; overflow-y: auto; }
+#chatList .item {
+  padding: 10px 14px; border-bottom: 1px solid var(--border-light);
+  background: var(--bg-list); display: flex; flex-direction: row; align-items: center; gap: 12px;
+  transition: background .12s; cursor: pointer;
+}
+#chatList .item:hover { background: var(--hover); }
+#chatList .item.active { background: var(--active); }
+
+/* Avatar */
+#chatList .item .avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 500; color: #fff; text-transform: uppercase;
+}
+#chatList .item .info { flex: 1; min-width: 0; }
+#chatList .item .name {
+  color: var(--text-primary); font-size: 14px; font-weight: 400;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#chatList .item .preview {
+  color: var(--text-secondary); font-size: 12px; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#chatList .item .meta { text-align: right; flex-shrink: 0; }
+#chatList .item .time {
+  color: var(--text-time); font-size: 10px; white-space: nowrap;
+}
+#chatList .item .group-tag {
+  font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-top: 4px; display: inline-block;
+  background: #2a3942; color: #8696a0;
+}
+html.light #chatList .item .group-tag { background: #e9edef; color: #667781; }
+
+#chatList .divider {
+  padding: 8px 14px 4px; font-size: 10px; font-weight: 500; letter-spacing: .5px;
+  color: var(--send-btn); text-transform: uppercase; flex-shrink: 0;
+  background: var(--bg-list); border-bottom: 1px solid var(--border-light);
+}
+
+/* === Chat view === */
+#chatView {
+  flex: 1; min-width: 0; display: none; flex-direction: column;
+  background: var(--bg-chat);
+}
+#chatView.active { display: flex !important; }
+
+#chatHeader {
+  background: var(--bg-header); padding: 8px 10px; font-size: 14px; font-weight: 500;
+  color: var(--text-primary); border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px;
+}
+#backBtn {
+  cursor: pointer; color: var(--text-secondary);
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; flex-shrink: 0; user-select: none; transition: background .15s;
+}
+#backBtn:hover { background: var(--hover); color: var(--text-primary); }
+
+#messages {
+  flex: 1; padding: 10px 12px; gap: 8px; overflow-y: auto;
+  background: var(--bg-msg-area); display: flex; flex-direction: column;
+}
+#messages::-webkit-scrollbar { width: 6px; }
+#messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Message bubbles */
+.msg {
+  max-width: 82%; padding: 8px 10px; border-radius: 12px;
+  font-size: 13px; line-height: 1.5; word-wrap: break-word;
+}
+.msg.customer {
+  background: var(--msg-customer); color: var(--text-primary);
+  align-self: flex-start; border-bottom-left-radius: 4px;
+}
+.msg.me {
+  background: var(--msg-me); color: var(--text-primary);
+  align-self: flex-end; border-bottom-right-radius: 4px;
+}
+.msg .meta { font-size: 11px; color: var(--text-time); margin-bottom: 4px; }
+.msg .trans {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary);
+}
+.msg .trans::before { content: '🇨🇳 '; font-size: 11px; }
+.msg .voice-badge {
+  display: inline-block; padding: 2px 6px; background: var(--border);
+  border-radius: 4px; font-size: 11px; color: var(--text-secondary);
+}
+
+/* Suggestions inline */
+.msg-suggestions {
+  margin: 4px 0 0 0; align-self: flex-start;
+}
+.msg-suggestions .toggle-btn {
+  font-size: 11px; color: var(--text-secondary); cursor: pointer;
+  padding: 4px 8px; border-radius: 6px; background: var(--bg-input-field);
+  border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 4px;
+}
+.msg-suggestions .toggle-btn:hover { background: var(--hover); }
+.msg-suggestions .sug-list {
+  display: none; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;
+}
+.msg-suggestions .sug-list.open { display: flex; }
+.msg-suggestions .sug-item {
+  padding: 6px 10px; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 12px; color: var(--text-primary); cursor: pointer;
+}
+.msg-suggestions .sug-item:hover { background: var(--hover); border-color: var(--send-btn); }
+.msg-suggestions .sug-item .zh { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Reply input */
+#replyBox {
+  padding: 8px 10px; gap: 6px; flex-shrink: 0; background: var(--bg-input);
+  display: flex; align-items: flex-end;
+}
+#replyBox textarea {
+  flex: 1; min-height: 40px; max-height: 140px; font-size: 13px; padding: 10px 12px;
+  background: var(--bg-input-field); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 8px; outline: none; resize: none; overflow-y: auto;
+  font-family: inherit; line-height: 1.4;
+}
+#replyBox textarea:focus { border-color: var(--send-btn); }
+#replyBox button {
+  padding: 6px 10px; font-size: 12px; white-space: nowrap; border-radius: 8px;
+  border: none; cursor: pointer; font-weight: 500; transition: opacity .15s;
+}
+#replyBox button:active { opacity: .7; }
+#replyBox .btn-send { background: var(--send-btn); color: var(--send-btn-text); }
+#replyBox .btn-ai { background: var(--ai-btn-bg); color: var(--ai-btn-text); border: 1px solid var(--border); }
+
+/* === AI Popup === */
+#aiPopup {
+  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,.55); z-index: 100; justify-content: center; align-items: flex-end;
+}
+#aiPopup.show { display: flex; }
+#aiPopup .box {
+  width: 100%; max-width: 100%; border-radius: 0;
+  background: var(--bg-header); color: var(--text-primary);
+  border: 1px solid var(--border); padding: 16px;
+  max-height: 90vh; overflow-y: auto;
+}
+#aiPopup .box h3 {
+  font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 10px;
+}
+#aiPopup .box textarea {
+  width: 100%; min-height: 60px; max-height: 180px; background: var(--bg-input-field);
+  border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);
+  padding: 10px; font-family: inherit; font-size: 13px; outline: none; resize: none; overflow-y: auto;
+}
+#aiPopup .box textarea:focus { border-color: var(--send-btn); }
+#aiPopup .box .actions {
+  display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;
+}
+#aiPopup .box button {
+  padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 500; transition: opacity .15s;
+}
+#aiPopup .box button:active { opacity: .7; }
+#aiPopup .box .btn-gen { background: var(--send-btn); color: var(--send-btn-text); }
+#aiPopup .box .btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+#aiPopup .box .result {
+  margin-top: 14px; padding: 12px; background: var(--bg-msg-area);
+  border-radius: 8px; font-size: 13px; border: 1px solid var(--border);
+}
+#aiPopup .box .result textarea {
+  width: 100%; min-height: 60px; max-height: 180px; background: var(--bg-input-field);
+  border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);
+  padding: 8px 12px; font-family: inherit; font-size: 13px; resize: none; overflow-y: auto; outline: none;
+}
+#aiPopup .box .result textarea:focus { border-color: var(--send-btn); }
+#aiPopup .box .result .btn-use { border-radius: 8px; padding: 7px 16px; font-size: 12px; margin: 4px 4px 0 0; }
+#aiPopup .box .result .btn-use:first-of-type { background: var(--send-btn) !important; color: var(--send-btn-text) !important; }
+#aiPopup .box .result .btn-use:last-of-type { background: var(--ai-btn-bg) !important; color: var(--ai-btn-text) !important; border: 1px solid var(--border) !important; }
+#aiPopup .box .result .btn-trans { border-radius: 8px; cursor: pointer; font-size: 12px; padding: 7px 14px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+
+/* === Reply Modal === */
+#replyModal {
+  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,.55); z-index: 200; justify-content: center; align-items: flex-end;
+}
+#replyModal.show { display: flex; }
+#replyModal .modal {
+  width: 100%; max-width: 100%; border-radius: 0; max-height: 95vh;
+  background: var(--bg-header); color: var(--text-primary);
+  border: none; display: flex; flex-direction: column; overflow: hidden;
+}
+#replyModal .modal-header {
+  padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#replyModal .modal-header h3 {
+  font-size: 14px; font-weight: 500; color: var(--text-primary); margin: 0 0 6px;
+}
+#replyModal .modal-header .msg-preview {
+  font-size: 12px; color: var(--text-primary); margin-top: 4px;
+  padding: 8px 12px; background: var(--msg-customer); border-radius: 8px;
+  max-height: 70px; overflow-y: auto;
+}
+#replyModal .modal-header .msg-preview .zh {
+  font-size: 11px; color: var(--text-secondary); margin-top: 3px;
+}
+#replyModal .modal-body {
+  flex: 1; overflow-y: auto; padding: 8px 14px;
+}
+#replyModal .modal-body .opt-cards {
+  display: flex; flex-direction: column; gap: 6px;
+}
+#replyModal .modal-body .opt-card {
+  padding: 10px 14px; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer; transition: all .15s;
+}
+#replyModal .modal-body .opt-card:hover { background: var(--hover); border-color: var(--border); }
+#replyModal .modal-body .opt-card.selected { border-color: var(--send-btn); background: var(--active); }
+#replyModal .modal-body .opt-card .label { font-size: 11px; color: var(--send-btn); font-weight: 600; margin-bottom: 4px; }
+#replyModal .modal-body .opt-card .en { font-size: 13px; color: var(--text-primary); }
+#replyModal .modal-body .opt-card .zh { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+#replyModal .modal-footer {
+  padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--bg-header);
+}
+#replyModal .modal-footer textarea {
+  width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
+  font-family: inherit; font-size: 13px; resize: none; min-height: 50px; max-height: 200px; overflow-y: auto; outline: none;
+}
+#replyModal .modal-footer textarea:focus { border-color: var(--send-btn); }
+#replyModal .modal-footer .actions {
+  display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap;
+}
+#replyModal .modal-footer .actions button {
+  padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 500; transition: opacity .15s;
+}
+#replyModal .modal-footer .actions button:active { opacity: .7; }
+#replyModal .modal-footer .btn-en { background: var(--send-btn); color: var(--send-btn-text); }
+#replyModal .modal-footer .btn-zh { background: var(--send-btn); color: var(--send-btn-text); }
+#replyModal .modal-footer .btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+#replyModal .modal-footer .btn-retry { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+#replyModal .modal-footer .btn-trans { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+
+/* Loading spinner */
+.loading { display: flex; align-items: center; justify-content: center; padding: 20px; color: var(--text-secondary); }
+.loading::before {
+  content: ''; width: 16px; height: 16px; border: 2px solid var(--border);
+  border-top-color: var(--send-btn); border-radius: 50%; animation: spin .6s linear infinite;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty state */
+#emptyState {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); font-size: 14px; flex-direction: column; gap: 8px;
+}
+#emptyState .icon { font-size: 40px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Sidebar: Chat List -->
+  <div id="sidebar">
+    <div id="sidebarHeader">
+      <span class="title">💬 Chats</span>
+      <span class="hdr-toggle on" id="toggleGroups" title="Show/hide groups">Groups</span>
+      <span class="hdr-toggle" id="toggleTheme" title="Light/dark mode">🌙</span>
+    </div>
+    <div id="statusBar">
+      <span class="dot connecting"></span>
+      <span class="status-text">Connecting...</span>
+    </div>
+    <div id="searchBox"><input type="text" id="searchInput" placeholder="Search contacts..." autocomplete="off" /></div>
+    <div id="chatList">
+      <div class="loading">Loading chats...</div>
+    </div>
+  </div>
+
+  <!-- Chat View -->
+  <div id="chatView">
+    <div id="chatHeader">
+      <div id="backBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </div>
+      <span id="chatHeaderText"></span>
+    </div>
+    <div id="messages"></div>
+    <div id="replyBox">
+      <textarea id="replyInput" placeholder="Type your reply... (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+      <button class="btn-ai" id="aiPopupBtn" title="AI 帮你写回复">✨ AI</button>
+      <button class="btn-send" id="sendReplyBtn">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Popup -->
+<div id="aiPopup">
+  <div class="box">
+    <h3>AI Custom Reply</h3>
+    <textarea id="aiPrompt" placeholder="输入你的要求，AI 自动生成英文回复&#10;例如：告诉客户价格可以打 9 折，但需要本周下单"></textarea>
+    <div class="actions">
+      <button class="btn-cancel" id="aiCancelBtn">Cancel</button>
+      <button class="btn-gen" id="aiGenBtn">Generate ✨</button>
+    </div>
+    <div class="result" id="aiResult" style="display:none">
+      <textarea id="aiResultZh" placeholder="AI-generated reply (editable)"></textarea>
+      <div id="aiResultEn" style="display:none;margin-top:6px;padding:8px;background:var(--bg-msg-area);border-radius:6px;font-size:12px;color:var(--text-secondary)"></div>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn-trans" id="aiTransBtn">🌐 EN</button>
+        <button class="btn-use" id="aiSendZhBtn">Send ZH</button>
+        <button class="btn-use" id="aiSendEnBtn">Send EN</button>
+        <button class="btn-cancel" id="aiDiscardBtn">Discard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reply Modal -->
+<div id="replyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>✏️ Reply to Message</h3>
+      <div class="msg-preview" id="modalMsgPreview"></div>
+    </div>
+    <div class="modal-body">
+      <button id="modalToggleSuggestions" style="background:var(--bg-input-field);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;width:100%;text-align:left">💡 5 AI Suggestions ▸</button>
+      <div class="opt-cards" id="modalOptCards" style="display:none;margin-top:6px;max-height:180px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <textarea id="modalEditText" placeholder="Select a suggestion above to edit the reply..."></textarea>
+      <div id="modalTranslation" style="display:none;margin-top:6px;padding:6px 10px;border-radius:6px;font-size:12px;background:var(--bg-msg-area);color:var(--text-secondary)"></div>
+      <div class="actions">
+        <button class="btn-trans" id="modalTransBtn">🌐 Translate</button>
+        <button class="btn-retry" id="modalRetryBtn">🔄 Retry</button>
+        <button class="btn-cancel" id="modalCancelBtn">Cancel</button>
+        <button class="btn-zh" id="modalSendZhBtn">Send ZH</button>
+        <button class="btn-en" id="modalSendEnBtn">Send EN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="sidepanel.js"></script>
+</body>
+</html>
