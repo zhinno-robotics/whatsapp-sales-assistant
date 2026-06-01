@@ -13,17 +13,25 @@ const DEFAULT_CONFIG = {
     apiKey: '',
     model: 'deepseek-chat',
   },
-  stt: {
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: '',
-    model: 'openai/whisper-1',
-  },
+  proLicense: '',
   userNativeLang: 'zh',
   customerLang: 'en',
   contextWindow: 10,
   autoOpenSidePanel: true,
-  autoTranscribe: false,
 };
+
+async function getProSTTConfig() {
+  const result = await chrome.storage.local.get('pro_stt_config');
+  return result.pro_stt_config || {
+    baseURL: 'https://api.groq.com/openai/v1',
+    apiKey: '',
+    model: 'whisper-large-v3-turbo',
+  };
+}
+
+function isPro(config) {
+  return !!(config.proLicense && config.proLicense.trim());
+}
 
 // ============================================================
 // Storage Manager (chrome.storage.local)
@@ -650,26 +658,26 @@ async function handleVoiceAudioData(data) {
     timestamp: Date.now(),
   });
 
-  // Only proceed with STT API if auto-transcribe is on or manual request
-  const isManual = data.manual || pendingManualTranscriptions.has(data.messageId);
-  pendingManualTranscriptions.delete(data.messageId);
-  if (!isManual && !config.autoTranscribe) return;
-  if (!config.stt.apiKey) {
+  // Pro license required for STT
+  if (!isPro(config)) {
     broadcastToSidepanel('transcription_error', {
       messageId: data.messageId,
       chatId: data.chatId,
-      error: 'No STT API key configured',
+      error: 'Pro license required for voice transcription',
     });
     return;
   }
 
+  const isManual = data.manual || pendingManualTranscriptions.has(data.messageId);
+  pendingManualTranscriptions.delete(data.messageId);
+
   try {
     broadcastToSidepanel('transcribing', { messageId: data.messageId, chatId: data.chatId });
 
-    const text = await AI.speechToText(data.audioBase64, data.mimeType, config);
+    const sttConfig = await getProSTTConfig();
+    const text = await AI.speechToText(data.audioBase64, data.mimeType, sttConfig);
     await Storage.setTranscription(data.messageId, text);
 
-    // Update saved message
     const messages = await Storage.getMessages(data.chatId);
     const msg = messages.find(m => m.messageId === data.messageId);
     if (msg) {
@@ -722,7 +730,7 @@ async function handleSidepanelCommand(msg) {
     case 'get_config': {
       const config = await Storage.getConfig();
       console.log('[wasap-bg] get_config: API key configured:', !!config.llm.apiKey);
-      sidepanelPort?.postMessage({ type: 'config', data: config });
+      sidepanelPort?.postMessage({ type: 'config', data: { ...config, isPro: isPro(config) } });
       break;
     }
 
@@ -863,6 +871,11 @@ async function handleSidepanelCommand(msg) {
     }
 
     case 'transcribe_message': {
+      const config = await Storage.getConfig();
+      if (!isPro(config)) {
+        sidepanelPort?.postMessage({ type: 'transcription_error', data: { messageId: params.messageId, chatId: params.chatId, error: 'Pro license required' } });
+        return;
+      }
       const { messageId, chatId } = params;
       const cachedAudio = await Storage.getAudioData(messageId);
       if (cachedAudio) {
@@ -876,7 +889,6 @@ async function handleSidepanelCommand(msg) {
       } else {
         pendingManualTranscriptions.add(messageId);
         sendToPage('transcribe_voice', { chatId, messageId });
-        // Clean up pending flag after 60s if no response
         setTimeout(() => pendingManualTranscriptions.delete(messageId), 60000);
       }
       break;

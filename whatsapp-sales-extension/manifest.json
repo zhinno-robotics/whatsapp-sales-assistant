@@ -14,7 +14,8 @@
     "https://web.whatsapp.com/*",
     "https://api.deepseek.com/*",
     "https://openrouter.ai/*",
-    "https://api.openai.com/*"
+    "https://api.openai.com/*",
+    "https://api.groq.com/*"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"

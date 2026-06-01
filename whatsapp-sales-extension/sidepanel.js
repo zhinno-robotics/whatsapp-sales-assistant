@@ -466,16 +466,22 @@ function renderMessage(msg) {
   let content = '';
 
   if (msg.isVoice) {
+    const isPro = state.config && state.config.isPro;
     content = `<span class="voice-badge">🎤 Voice Message</span>`;
     if (msg._transcribing) {
       content += `<div class="loading-inline">Transcribing...</div>`;
     } else if (msg.transcription) {
       content += `<div class="trans" style="border-top-color:var(--send-btn)">${escapeHtml(msg.transcription)}</div>`;
-    } else if (msg._transcriptionError) {
+    } else if (msg._transcriptionError && isPro) {
       content += `<div class="trans" style="color:#ff6b6b;border-top-color:#ff6b6b">⚠️ ${escapeHtml(msg._transcriptionError)}</div>`;
-      content += `<button class="transcribe-btn" data-msgid="${escapeAttr(msg.messageId)}">🔄 Retry Transcribe</button>`;
-    } else {
+      content += `<button class="transcribe-btn" data-msgid="${escapeAttr(msg.messageId)}">🔄 Retry</button>`;
+    } else if (msg._transcriptionError && !isPro) {
+      content += `<div class="trans" style="color:#ff6b6b;border-top-color:#ff6b6b">🔒 ${escapeHtml(msg._transcriptionError)}</div>`;
+      content += `<button class="upgrade-btn">🔑 Upgrade to Pro</button>`;
+    } else if (isPro) {
       content += `<button class="transcribe-btn" data-msgid="${escapeAttr(msg.messageId)}">📝 Transcribe</button>`;
+    } else {
+      content += `<button class="upgrade-btn">🔑 Unlock Voice Transcription</button>`;
     }
   } else if (body) {
     content = escapeHtml(body);
@@ -902,6 +908,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const transcribeBtn = e.target.closest('.transcribe-btn');
     if (transcribeBtn && transcribeBtn.dataset.msgid) {
       requestTranscription(transcribeBtn.dataset.msgid);
+      return;
+    }
+    // Upgrade to Pro button
+    const upgradeBtn = e.target.closest('.upgrade-btn');
+    if (upgradeBtn) {
+      chrome.tabs.create({ url: 'https://github.com/zhinno-robotics/whatsapp-sales-assistant#pro' });
       return;
     }
   });

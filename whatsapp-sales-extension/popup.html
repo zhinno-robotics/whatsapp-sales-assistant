@@ -53,13 +53,22 @@ input[type="checkbox"] { width: auto; margin-right: 6px; }
 </div>
 
 <div class="section">
-  <h3>Voice Transcription (STT)</h3>
-  <label>STT Base URL</label>
-  <input type="text" id="sttBaseURL" placeholder="https://openrouter.ai/api/v1" />
-  <label style="margin-top:8px">STT API Key</label>
-  <input type="password" id="sttApiKey" placeholder="sk-or-..." />
-  <label style="margin-top:8px">STT Model</label>
-  <input type="text" id="sttModel" placeholder="openai/gpt-4o" />
+  <h3>Pro License</h3>
+  <label>License Key</label>
+  <input type="text" id="proLicense" placeholder="Unlock voice transcription & more" />
+  <div style="font-size:11px;color:#8696a0;margin-top:4px">
+    🎤 Voice transcription · 📊 Customer insights · 🔄 Auto-transcribe<br/>
+    <a href="#" id="upgradeLink" style="color:#00a884;text-decoration:none">Get Pro →</a>
+  </div>
+</div>
+
+<div class="section" id="proSttSection" style="display:none">
+  <h3>Voice Recognition</h3>
+  <label>API Key</label>
+  <input type="password" id="sttApiKey" placeholder="Voice recognition API key" />
+  <div style="font-size:11px;color:#8696a0;margin-top:4px">
+    Required for voice message transcription. Get a free key from your AI provider.
+  </div>
 </div>
 
 <div class="section">
@@ -83,10 +92,6 @@ input[type="checkbox"] { width: auto; margin-right: 6px; }
   <label class="checkbox-label">
     <input type="checkbox" id="autoOpenSidePanel" checked />
     Auto-open side panel on WhatsApp Web
-  </label>
-  <label class="checkbox-label">
-    <input type="checkbox" id="autoTranscribe" />
-    Auto-transcribe voice messages
   </label>
 </div>
 
