@@ -2,32 +2,24 @@
 
 ## 前置准备
 
-### 1. 托管隐私政策页面
+### 1. 隐私政策页面（已完成 ✅）
 
-Chrome Web Store 要求每个扩展提供隐私政策 URL。你需要将 `store/privacy.html` 托管在公网可访问的地址。
+隐私政策已托管在 GitHub Pages：
+- **中文**: https://zhinno-robotics.github.io/whatsapp-sales-assistant/privacy.html
+- （页面右上角可切换中英文）
 
-**推荐方案：GitHub Pages（免费）**
+### 2. 商店截图（已完成 ✅）
 
-```bash
-# 在项目仓库中
-git add store/privacy.html
-git commit -m "Add privacy policy"
-git push
+5 张 1280×800 截图已自动生成：
+- `store/screenshots/screenshot-1.png` — 设置弹窗（32 KB）
+- `store/screenshots/screenshot-2.png` — 聊天列表界面（40 KB）
+- `store/screenshots/screenshot-3.png` — AI 翻译 + 5 种回复建议（76 KB）
+- `store/screenshots/screenshot-4.png` — 自定义 AI 回复弹窗（58 KB）
+- `store/screenshots/screenshot-5.png` — 回复编辑弹窗（60 KB）
 
-# 然后去 GitHub → Settings → Pages → Source: main branch
-# 页面地址将为: https://<your-username>.github.io/whatsapp-sales-assistant/store/privacy
-```
+> 如需重新生成：运行 `node store/screenshots/take-screenshots.js`
 
-**备选方案：**
-- 使用 Gist（gist.github.com）
-- 使用 Notion 公开页面
-- 任何可托管 HTML 的静态服务
-
----
-
-### 2. 生成商店截图
-
-1. 用浏览器打开 `store/screenshots.html`
+### 3. 扩展打包（已完成 ✅）
 2. 按 `F11` 全屏（分辨率设为 1280×800 或更高）
 3. 浏览器缩放设置为 100%（Ctrl+0）
 4. 依次截取 5 个 Frame（用浏览器截图工具或系统截图）：
