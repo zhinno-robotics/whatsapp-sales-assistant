@@ -1,23 +1,54 @@
-# WhatsApp Sales Assistant — Browser Extension v2.0
+# AI Sales Copilot — Browser Extension v2.2
 
-AI-powered WhatsApp sales copilot as a **pure Chrome/Edge extension** — no server needed.
+AI-powered sales copilot for WhatsApp Web as a **pure Chrome/Edge extension** — no server needed.
 
 ## Features
 
-- **Real-time WhatsApp Integration** — connects via WhatsApp Web content script
+- **Real-time WhatsApp Web Integration** — connects via content script
 - **Auto Translation** — customer messages translated to your native language
 - **5 AI Reply Suggestions** — Professional / Friendly / Closing / Detailed / Concise
-- **Custom AI Reply** — describe your intent, AI crafts polished reply
-- **Voice Transcription** — transcribe voice messages (requires STT API key)
+- **Custom AI Reply** — describe your intent in your language, AI crafts polished reply
 - **Side Panel UI** — WhatsApp mobile-style interface in browser side panel
-- **Zero Server** — everything runs in the extension, no Express server needed
+- **Zero Server** — everything runs in the extension, no backend needed
+- **Free & Open Source** — no license key, no subscription, MIT licensed
+
+## Installation
+
+1. Open `edge://extensions/` or `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked** and select this folder
+4. Open [web.whatsapp.com](https://web.whatsapp.com)
+
+## Configuration
+
+Click the extension icon to open settings:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| LLM Base URL | AI API endpoint | `https://api.deepseek.com/v1` |
+| LLM API Key | Your API key (DeepSeek/OpenAI/OpenRouter) | (required) |
+| LLM Model | Model name | `deepseek-chat` |
+| Your Language | Your native language | Chinese |
+| Customer Language | Customer's language | English |
+| Context Window | Messages for AI context | 10 |
+
+## Usage
+
+1. Open WhatsApp Web, click extension icon → "Open Side Panel"
+2. Wait for "WhatsApp Connected" status
+3. Select a chat from the sidebar
+4. Customer messages show with one-click translation
+5. Click `💡 N AI Suggestions` to expand reply options
+6. Click `↩ Reply` on any message to open the reply editor
+7. Click `✨ AI` to describe your intent and get a custom AI reply
+8. Send in your language or auto-translated to English
 
 ## Architecture
 
 ```
 Chrome/Edge Extension (Manifest V3)
 ├── background.js (Service Worker)
-│   ├── AI calls (DeepSeek / OpenRouter)
+│   ├── AI calls (DeepSeek / OpenAI / OpenRouter)
 │   ├── chrome.storage.local (data persistence)
 │   └── Message routing (content ↔ sidepanel)
 │
@@ -26,98 +57,20 @@ Chrome/Edge Extension (Manifest V3)
 │   └── Bridges page-script ↔ background
 │
 ├── page-script.js (MAIN world — injected)
-│   ├── Accesses window.Store (WhatsApp internals)
-│   ├── Monitors new messages via Store.Msg events
-│   └── Sends messages via Store.SendMessage
+│   ├── Accesses WhatsApp Web internals
+│   ├── Monitors new messages
+│   └── Sends messages via Store API
 │
 ├── sidepanel.html + sidepanel.js
 │   └── Full UI: chat list, messages, AI suggestions
 │
 └── popup.html + popup.js
-    └️── Settings: API keys, language, behavior
+    └── Settings: API keys, language, behavior
 ```
 
-## Installation
+## Privacy
 
-1. Open `edge://extensions/` or `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top-right)
-3. Click **Load unpacked**
-4. Select the `whatsapp-sales-extension/` folder
-5. Open [web.whatsapp.com](https://web.whatsapp.com) and scan QR code
-
-## Configuration
-
-Click the extension icon in the toolbar to open **Settings**:
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| LLM Base URL | AI API endpoint | `https://api.deepseek.com/v1` |
-| LLM API Key | Your DeepSeek/OpenAI API key | (required) |
-| LLM Model | Model name | `deepseek-chat` |
-| STT Base URL | Voice transcription API | `https://openrouter.ai/api/v1` |
-| STT API Key | OpenRouter API key | (optional) |
-| STT Model | Transcription model | `openai/gpt-4o` |
-| Your Language | Your native language | Chinese |
-| Customer Language | Customer's language | English |
-| Context Window | Messages for AI context | 10 |
-
-## Usage
-
-1. **Open WhatsApp Web** — the side panel auto-opens
-2. **Wait for connection** — status bar shows "WhatsApp Connected"
-3. **Select a chat** from the left sidebar
-4. **View messages** — customer messages appear with optional translation
-5. **AI Suggestions** — click `💡 N AI Suggestions` to expand reply options
-6. **Reply to specific message** — click `↩ Reply to this message`
-7. **Custom AI reply** — click `✨ AI` button, describe your intent in Chinese
-8. **Send** — choose Send ZH (Chinese) or Send EN (English)
-
-## Key Differences from v1 (Server-based)
-
-| Feature | v1 (Server) | v2 (Extension) |
-|---------|-------------|----------------|
-| Server required | Yes (Express + Puppeteer) | **No** |
-| WhatsApp connection | whatsapp-web.js (Node.js) | **Content Script** (window.Store) |
-| Data storage | JSON file (data/store.json) | **chrome.storage.local** |
-| Deployment | npm start + browser | **Load unpacked extension** |
-| Portability | Requires Node.js runtime | **Pure browser extension** |
-
-## File Structure
-
-```
-whatsapp-sales-extension/
-├── manifest.json          # Manifest V3 configuration
-├── background.js          # Service worker (AI, storage, routing)
-├── content.js             # Content script (bridge)
-├── page-script.js         # Injected script (WhatsApp Store access)
-├── sidepanel.html         # Sidepanel UI (HTML + CSS)
-├── sidepanel.js           # Sidepanel logic
-├── popup.html             # Settings popup
-├── popup.js               # Settings logic
-├── icons/
-│   ├── icon-16.png
-│   ├── icon-48.png
-│   └── icon-128.png
-└── README.md
-```
-
-## Troubleshooting
-
-**Side panel doesn't open:**
-- Click the extension icon in the toolbar
-- Ensure you're on `web.whatsapp.com`
-
-**No messages appearing:**
-- Refresh the WhatsApp Web tab
-- Check that the extension is enabled
-
-**AI not working:**
-- Open Settings (click extension icon) and verify API key
-- Click "Test LLM Connection" to verify
-
-**Messages not sending:**
-- Ensure WhatsApp Web is fully loaded
-- Try refreshing the WhatsApp Web tab
+All data stored locally (chrome.storage.local). No chat logs uploaded. AI calls use your own API key directly to your chosen provider. [Privacy Policy](https://zhinno-robotics.github.io/whatsapp-sales-assistant/privacy.html)
 
 ## License
 

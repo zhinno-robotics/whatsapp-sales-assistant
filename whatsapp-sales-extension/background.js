@@ -746,7 +746,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'open-sidepanel',
-      title: 'Open Sales Assistant',
+      title: 'Open AI Sales Copilot',
       contexts: ['page'],
       documentUrlPatterns: ['https://web.whatsapp.com/*'],
     });

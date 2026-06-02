@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "WhatsApp Sales Assistant (Free)",
+  "name": "AI Sales Copilot",
   "version": "2.2.0",
-  "description": "Free AI-powered sales assistant for WhatsApp Web — translation, reply suggestions, and smart copywriting",
+  "description": "Smart AI replies & real-time translation for WhatsApp Web — B2B sales communication made easy",
   "permissions": [
     "storage",
     "sidePanel",
@@ -20,7 +20,7 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "WhatsApp Sales Assistant",
+    "default_title": "AI Sales Copilot",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",

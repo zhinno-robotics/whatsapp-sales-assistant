@@ -1,4 +1,4 @@
-# WhatsApp Sales Assistant — 发布指南
+# AI Sales Copilot — 发布指南
 
 ## 前置准备
 
@@ -75,7 +75,7 @@
 | 字段 | 内容 |
 |------|------|
 | **Store listing language** | Chinese (Simplified) + English |
-| **Title** | WhatsApp 销售助手 — AI 翻译与智能回复 |
+| **Title** | AI Sales Copilot — AI 翻译与智能回复 |
 | **Short description** | WhatsApp Web 上的 AI 销售助手：实时翻译、5 种回复建议、自定义话术生成 |
 | **Detailed description** | 见 `store/listing.md` 中的中文详细描述 |
 | **Category** | Productivity |
