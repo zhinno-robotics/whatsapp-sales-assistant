@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Screenshots — WhatsApp Sales Assistant</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #333; display: flex; flex-direction: column; align-items: center;
+  gap: 40px; padding: 40px 20px;
+}
+
+.frame {
+  width: 1280px; height: 800px; position: relative; overflow: hidden;
+  border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,.4);
+}
+.frame-label {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.7); color: #fff; padding: 6px 16px; border-radius: 20px;
+  font-size: 13px; z-index: 99; pointer-events: none; white-space: nowrap;
+}
+.frame::after {
+  content: '1280 × 800'; position: absolute; bottom: 8px; right: 12px;
+  color: rgba(255,255,255,.3); font-size: 11px; pointer-events: none;
+}
+
+/* ── Frame 1: Settings Popup ── */
+.frame1 {
+  background: #dddbd1 url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='%23eae6df'/%3E%3C/svg%3E");
+  display: flex; align-items: center; justify-content: center;
+}
+.popup-card {
+  width: 340px; background: #111b21; border-radius: 12px; padding: 20px;
+  color: #e9edef; box-shadow: 0 4px 24px rgba(0,0,0,.3);
+}
+.popup-card h2 { font-size: 17px; margin-bottom: 18px; color: #00a884; }
+.popup-section { margin-bottom: 16px; }
+.popup-section h3 { font-size: 12px; color: #8696a0; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.popup-section label { display: block; font-size: 12px; color: #8696a0; margin-bottom: 4px; }
+.popup-section input, .popup-section select {
+  width: 100%; background: #202c33; border: 1px solid #2a3942; border-radius: 6px;
+  color: #e9edef; padding: 8px 10px; font-size: 13px; outline: none; margin-bottom: 8px;
+  font-family: inherit;
+}
+.popup-section select { margin-bottom: 0; }
+.popup-section input:focus { border-color: #00a884; }
+.btn {
+  width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 500; margin-top: 8px; font-family: inherit;
+}
+.btn-primary { background: #00a884; color: #111b21; }
+.btn-secondary { background: #2a3942; color: #8696a0; }
+
+/* ── Frame 2: Side Panel Chat List ── */
+.frame2 { background: #dddbd1; display: flex; justify-content: center; align-items: center; }
+.sp-chatlist {
+  width: 420px; height: 760px; background: #111b21; border-radius: 8px; overflow: hidden;
+  display: flex; flex-direction: column; box-shadow: 0 2px 12px rgba(0,0,0,.2);
+}
+.sp-header {
+  background: #202c33; padding: 10px 16px; font-size: 15px; font-weight: 500;
+  color: #e9edef; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.sp-status {
+  padding: 6px 16px; font-size: 11px; color: #00a884; display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid #1f2c33; flex-shrink: 0;
+}
+.sp-status .dot { width: 7px; height: 7px; border-radius: 50%; background: #00a884; }
+.sp-search { padding: 8px 12px; border-bottom: 1px solid #1f2c33; flex-shrink: 0; }
+.sp-search input {
+  width: 100%; background: #2a3942; border: none; border-radius: 8px;
+  color: #e9edef; padding: 8px 12px; font-size: 13px; outline: none; font-family: inherit;
+}
+.sp-list { flex: 1; overflow-y: auto; }
+.chat-item {
+  padding: 10px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;
+  border-bottom: 1px solid #1f2c33; transition: background .12s; color: #e9edef;
+}
+.chat-item:hover { background: #202c33; }
+.chat-avatar {
+  width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-size: 18px; font-weight: 500; flex-shrink: 0;
+}
+.chat-info { flex: 1; min-width: 0; }
+.chat-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-preview { font-size: 12px; color: #8696a0; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-time { font-size: 10px; color: #8696a0; white-space: nowrap; }
+.divider-label {
+  padding: 8px 16px 4px; font-size: 10px; color: #00a884; text-transform: uppercase;
+  font-weight: 500; letter-spacing: .5px;
+}
+
+/* ── Frame 3: Message view ── */
+.frame3 { background: #dddbd1; display: flex; justify-content: center; align-items: center; }
+.sp-chatview {
+  width: 420px; height: 760px; background: #0b141a; border-radius: 8px;
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.2);
+}
+.cv-header {
+  background: #202c33; padding: 10px 12px; font-size: 14px; font-weight: 500;
+  color: #e9edef; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.cv-header .back { color: #8696a0; cursor: pointer; font-size: 18px; }
+.cv-messages {
+  flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+}
+.msg { max-width: 78%; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+.msg.customer { background: #202c33; color: #e9edef; align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.me { background: #005c4b; color: #e9edef; align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg .meta { font-size: 10px; color: #8696a0; margin-bottom: 4px; }
+.msg .trans { margin-top: 8px; padding-top: 8px; border-top: 1px solid #8696a044; font-size: 12px; color: #8696a0; }
+.sug-block { align-self: flex-start; margin-top: 2px; }
+.sug-toggle {
+  font-size: 11px; color: #8696a0; padding: 4px 8px; border-radius: 6px;
+  background: #2a3942; border: 1px solid #2a3942; display: inline-block; cursor: pointer;
+}
+.sug-cards { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.sug-card {
+  padding: 6px 10px; background: #2a3942; border-radius: 6px; font-size: 12px;
+  color: #e9edef; border: 1px solid #2a3942;
+}
+.sug-card .zh { font-size: 11px; color: #8696a0; margin-top: 2px; }
+.cv-input {
+  padding: 8px 10px; background: #202c33; display: flex; align-items: flex-end; gap: 6px; flex-shrink: 0;
+}
+.cv-input textarea {
+  flex: 1; min-height: 40px; max-height: 40px; background: #2a3942; border: none;
+  border-radius: 8px; color: #e9edef; padding: 10px 12px; font-size: 13px;
+  outline: none; resize: none; font-family: inherit;
+}
+.cv-input .btn-ai { background: #2a3942; color: #8696a0; border: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+.cv-input .btn-send { background: #00a884; color: #111b21; border: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500; }
+
+/* ── Frame 4: AI Popup ── */
+.frame4 { background: #dddbd1; display: flex; justify-content: center; align-items: center; }
+.sp-chatview-popup { position: relative; }
+.popup-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.55); z-index: 10;
+  display: flex; justify-content: center; align-items: flex-end;
+}
+.popup-box {
+  width: 100%; background: #202c33; padding: 16px; border-radius: 12px 12px 0 0;
+}
+.popup-box h3 { font-size: 14px; color: #e9edef; margin-bottom: 10px; }
+.popup-box textarea {
+  width: 100%; min-height: 60px; background: #2a3942; border: 1px solid #2a3942;
+  border-radius: 8px; color: #e9edef; padding: 10px; font-size: 13px;
+  outline: none; resize: none; font-family: inherit;
+}
+.popup-box .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.popup-box .btn-gen { background: #00a884; color: #111b21; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.popup-box .btn-cancel { background: transparent; color: #8696a0; border: none; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+.popup-result {
+  margin-top: 14px; padding: 12px; background: #0b141a; border-radius: 8px;
+  border: 1px solid #2a3942;
+}
+.popup-result textarea { min-height: 50px; margin-bottom: 8px; }
+.popup-result .btn-use { background: #00a884; color: #111b21; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-right: 6px; }
+
+/* ── Frame 5: Reply Modal ── */
+.frame5 { background: #dddbd1; display: flex; justify-content: center; align-items: center; }
+.modal-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.55); z-index: 10;
+  display: flex; justify-content: center; align-items: flex-end;
+}
+.modal-box {
+  width: 100%; max-height: 90%; background: #202c33; color: #e9edef;
+  border-radius: 12px 12px 0 0; display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-header {
+  padding: 14px 16px; border-bottom: 1px solid #2a3942;
+}
+.modal-header h3 { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.modal-header .preview {
+  font-size: 12px; padding: 8px 12px; background: #202c33; border-radius: 8px;
+  border: 1px solid #2a3942;
+}
+.modal-body { padding: 8px 16px; overflow-y: auto; }
+.modal-body .opt-cards { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.opt-card {
+  padding: 10px 14px; background: #2a3942; border: 1px solid #2a3942;
+  border-radius: 8px; cursor: pointer;
+}
+.opt-card.selected { border-color: #00a884; }
+.opt-card .label { font-size: 11px; color: #00a884; font-weight: 600; margin-bottom: 4px; }
+.opt-card .en { font-size: 13px; color: #e9edef; }
+.opt-card .zh { font-size: 12px; color: #8696a0; margin-top: 4px; }
+.modal-footer {
+  padding: 12px 16px; border-top: 1px solid #2a3942; background: #202c33;
+}
+.modal-footer textarea {
+  width: 100%; background: #2a3942; border: 1px solid #2a3942; border-radius: 8px;
+  color: #e9edef; padding: 8px 12px; font-family: inherit; font-size: 13px;
+  resize: none; min-height: 50px; outline: none;
+}
+.modal-footer .actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+.modal-footer .actions button {
+  padding: 6px 12px; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 500;
+}
+.modal-footer .btn-en { background: #00a884; color: #111b21; }
+.modal-footer .btn-cancel { background: transparent; color: #8696a0; }
+.modal-footer .btn-retry { background: transparent; color: #8696a0; }
+
+.wabascreen {
+  width: 900px; height: 600px; background: #dddbd1; border-radius: 8px; position: absolute;
+  top: 60px; left: 50%; transform: translateX(-50%);
+  display: flex; justify-content: center; align-items: center;
+  box-shadow: 0 2px 20px rgba(0,0,0,.15);
+}
+
+/* ── Frame 5: Full scene ── */
+.frame5 { background: #dddbd1; }
+.whatsapp-container {
+  display: flex; width: 1280px; height: 800px;
+}
+.wa-main {
+  flex: 1; background: #efeae2; display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+}
+.wa-intro {
+  text-align: center; color: #667781;
+}
+.wa-intro .logo { font-size: 64px; margin-bottom: 16px; }
+.wa-intro h2 { font-size: 28px; font-weight: 300; color: #41525d; }
+.wa-intro p { font-size: 14px; margin-top: 8px; }
+.wa-intro .encrypted {
+  font-size: 12px; margin-top: 20px; color: #8696a0;
+}
+</style>
+</head>
+<body>
+
+<!-- Frame 1: Settings Popup -->
+<div class="frame frame1">
+  <div class="frame-label">Screenshot 1: Settings Popup</div>
+  <div class="popup-card">
+    <h2>Settings</h2>
+    <div class="popup-section">
+      <h3>AI Configuration</h3>
+      <label>LLM Base URL</label>
+      <input value="https://api.deepseek.com/v1" readonly />
+      <label>LLM API Key</label>
+      <input type="password" value="sk-••••••••••" readonly />
+      <label>LLM Model</label>
+      <input value="deepseek-chat" readonly />
+    </div>
+    <div class="popup-section">
+      <h3>Language</h3>
+      <label>Your Language</label>
+      <select><option>Chinese (中文)</option></select>
+      <label>Customer Language</label>
+      <select><option>English</option></select>
+      <label>Context Window</label>
+      <input value="10" readonly />
+    </div>
+    <button class="btn btn-primary">Save Settings</button>
+    <button class="btn btn-secondary">Test LLM Connection</button>
+    <button class="btn btn-secondary" style="background:#00a884;color:#111b21;font-weight:600">Open Side Panel</button>
+  </div>
+</div>
+
+<!-- Frame 2: Chat List -->
+<div class="frame frame2">
+  <div class="frame-label">Screenshot 2: Chat List — WhatsApp Mobile-Style Interface</div>
+  <div class="sp-chatlist">
+    <div class="sp-header">💬 Chats <span style="flex:1"></span><span style="font-size:10px;background:#00a884;color:#111b21;padding:2px 8px;border-radius:10px">Groups</span></div>
+    <div class="sp-status"><span class="dot"></span> WhatsApp Connected</div>
+    <div class="sp-search"><input placeholder="Search contacts..." /></div>
+    <div class="sp-list">
+      <div class="chat-item"><div class="chat-avatar" style="background:#00a884">AM</div><div class="chat-info"><div class="chat-name">Ahmed Mohammed</div><div class="chat-preview">I need 500 units of PTFE hoses...</div></div><div class="chat-time">10:32</div></div>
+      <div class="chat-item"><div class="chat-avatar" style="background:#0084ff">SK</div><div class="chat-info"><div class="chat-name">Sarah Kim</div><div class="chat-preview">Can you send me the updated price list?</div></div><div class="chat-time">09:15</div></div>
+      <div class="chat-item"><div class="chat-avatar" style="background:#ff6b6b">JD</div><div class="chat-info"><div class="chat-name">John Davis</div><div class="chat-preview">The shipment arrived yesterday...</div></div><div class="chat-time">昨天</div></div>
+      <div class="chat-item"><div class="chat-avatar" style="background:#6c5ce7">LC</div><div class="chat-info"><div class="chat-name">Lisa Chen</div><div class="chat-preview">Regarding the OEM samples...</div></div><div class="chat-time">昨天</div></div>
+      <div class="divider-label">Groups</div>
+      <div class="chat-item"><div class="chat-avatar" style="background:#fd79a8">ST</div><div class="chat-info"><div class="chat-name">Sales Team</div><div class="chat-preview">Meeting at 3pm to review Q2 goals</div></div><div class="chat-time">周一</div></div>
+      <div class="chat-item"><div class="chat-avatar" style="background:#e17055">QC</div><div class="chat-info"><div class="chat-name">QC &amp; Shipping</div><div class="chat-preview">Batch #4521 ready for inspection</div></div><div class="chat-time">周一</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Frame 3: Message View with AI Suggestions -->
+<div class="frame frame3">
+  <div class="frame-label">Screenshot 3: AI Translation + 5 Reply Suggestions</div>
+  <div class="sp-chatview">
+    <div class="cv-header"><span class="back">←</span> Ahmed Mohammed</div>
+    <div class="cv-messages">
+      <div class="msg customer">
+        <div class="meta">10:32 AM</div>
+        <div>Hi, I need 500 units of PTFE hoses for hydraulic systems. Can you give me a quote including shipping to Dubai?</div>
+        <div class="trans">你好，我需要 500 根液压系统用 PTFE 软管。能否提供包含到迪拜运费的报价？</div>
+      </div>
+      <div class="msg me">
+        <div class="meta">10:45 AM</div>
+        <div>Sure, let me check our current stock and shipping rates for Dubai. I'll get back to you shortly.</div>
+      </div>
+      <div class="msg customer">
+        <div class="meta">10:50 AM</div>
+        <div>Thanks! Also, do you have any certifications for these hoses? Our client requires ISO 9001 compliance.</div>
+        <div class="trans">谢谢！另外，这些软管有认证吗？我们客户要求 ISO 9001 合规。</div>
+      </div>
+      <div class="sug-block">
+        <div class="sug-toggle">💡 5 AI Suggestions</div>
+        <div class="sug-cards">
+          <div class="sug-card"><div>Yes, all our PTFE hoses are ISO 9001 certified. I can include the certification documents with the quote. Let me prepare everything and send it over by today.</div><div class="zh">是的，我们的 PTFE 软管均通过 ISO 9001 认证。我会在报价中附上认证文件，今天之内发给您。</div></div>
+          <div class="sug-card"><div>Great question! We're fully ISO 9001 certified and I'd be happy to share the docs. Let me pull together the quote and certification for you now.</div><div class="zh">好问题！我们已通过 ISO 9001 认证，很乐意分享相关文件。我现在就为您整理报价和认证资料。</div></div>
+          <div class="sug-card"><div>Absolutely — ISO 9001 is standard for all our products. I'll prepare the full quote with certifications and shipping to Dubai. Expect it in your inbox within 2 hours.</div><div class="zh">当然，我们的所有产品均符合 ISO 9001 标准。我将准备包含认证和迪拜运费的完整报价，预计 2 小时内发送。</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="cv-input">
+      <textarea placeholder="输入回复... (Enter 发送)"></textarea>
+      <button class="btn-ai">✨ AI</button>
+      <button class="btn-send">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Frame 4: AI Custom Reply Popup -->
+<div class="frame frame4">
+  <div class="frame-label">Screenshot 4: Custom AI Reply — Describe in Chinese, AI writes in English</div>
+  <div class="sp-chatview sp-chatview-popup">
+    <div class="cv-header"><span class="back">←</span> Ahmed Mohammed</div>
+    <div class="cv-messages" style="opacity:0.5">
+      <div class="msg customer"><div class="meta">10:50 AM</div><div>Thanks! Also, do you have any certifications for these hoses?</div><div class="trans">谢谢！这些软管有认证吗？</div></div>
+      <div class="msg me"><div class="meta">11:02 AM</div><div>Yes, all our PTFE hoses are ISO 9001 certified. I'll include the documents with the quote.</div></div>
+    </div>
+    <div class="popup-overlay">
+      <div class="popup-box">
+        <h3>AI Custom Reply</h3>
+        <textarea>告诉客户我们有 ISO 9001 认证，可以先发资料给他看。价格方面如果能一次性订 1000 根可以打 95 折。</textarea>
+        <div class="actions">
+          <button class="btn-cancel">Cancel</button>
+          <button class="btn-gen">Generate ✨</button>
+        </div>
+        <div class="popup-result">
+          <textarea readonly>我们有 ISO 9001 认证，可以先发认证资料给您过目。另外如果一次性订购 1000 根，可以享受 95 折优惠。</textarea>
+          <div style="font-size:12px;color:#8696a0;margin-bottom:6px;padding:6px;background:#111b21;border-radius:6px">
+            We are fully ISO 9001 certified — I can send you the certification documents right away for your review. Regarding pricing, if you're able to place an order for 1,000 units at once, I can offer a 5% discount.
+          </div>
+          <button class="btn-use">Send EN</button>
+          <button class="btn-use" style="background:#2a3942;color:#8696a0">Send ZH</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Frame 5: Reply Modal with Suggestions -->
+<div class="frame frame5">
+  <div class="frame-label">Screenshot 5: Reply Modal — Select, Edit & Send</div>
+  <div class="sp-chatview" style="position:relative">
+    <div class="cv-header"><span class="back">←</span> Ahmed Mohammed</div>
+    <div class="cv-messages" style="opacity:0.5">
+      <div class="msg customer"><div class="meta">10:50 AM</div><div>Thanks! Also, do you have any certifications for these hoses? Our client requires ISO 9001 compliance.</div></div>
+    </div>
+    <div class="modal-overlay" style="position:absolute">
+      <div class="modal-box" style="border-radius:12px 12px 0 0">
+        <div class="modal-header">
+          <h3>✏️ Reply to Message</h3>
+          <div class="preview">Thanks! Also, do you have any certifications for these hoses? Our client requires ISO 9001 compliance.<div style="font-size:11px;color:#8696a0;margin-top:4px">谢谢！这些软管有认证吗？我们客户要求 ISO 9001 合规。</div></div>
+        </div>
+        <div class="modal-body">
+          <div class="opt-cards">
+            <div class="opt-card selected">
+              <div class="label">Professional</div>
+              <div class="en">Yes, all our PTFE hoses are ISO 9001 certified. I can include the certification documents with the quote. Let me prepare everything and send it over by today.</div>
+              <div class="zh">我们所有 PTFE 软管均通过 ISO 9001 认证，我将随报价一起附上认证文件，今天之内发给您。</div>
+            </div>
+            <div class="opt-card">
+              <div class="label">Friendly</div>
+              <div class="en">Great question! We're fully ISO 9001 certified and I'd be happy to share the docs. Let me pull together the quote and certification now.</div>
+              <div class="zh">好问题！我们已通过 ISO 9001 认证，马上整理报价和认证资料发给您。</div>
+            </div>
+            <div class="opt-card">
+              <div class="label">Closing</div>
+              <div class="en">Absolutely — ISO 9001 is standard for all our products. I'll prepare the full quote with certifications and shipping. Expect it within 2 hours.</div>
+              <div class="zh">当然，我们所有产品均符合 ISO 9001。将在 2 小时内发送含认证的完整报价。</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <textarea>我们所有 PTFE 软管均通过 ISO 9001 认证，我将随报价一起附上认证文件，今天之内发给您。</textarea>
+          <div class="actions">
+            <button class="btn-cancel">Cancel</button>
+            <button class="btn-retry">🔄 Retry</button>
+            <button class="btn-en">Send ZH</button>
+            <button class="btn-en">Send EN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

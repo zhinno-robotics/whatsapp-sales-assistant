@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "WhatsApp Sales Assistant",
-  "version": "2.1.0",
-  "description": "AI-powered sales assistant for WhatsApp Web — translation, reply suggestions, and smart copywriting",
+  "name": "WhatsApp Sales Assistant (Free)",
+  "version": "2.2.0",
+  "description": "Free AI-powered sales assistant for WhatsApp Web — translation, reply suggestions, and smart copywriting",
   "permissions": [
     "storage",
     "sidePanel",
@@ -14,8 +14,7 @@
     "https://web.whatsapp.com/*",
     "https://api.deepseek.com/*",
     "https://openrouter.ai/*",
-    "https://api.openai.com/*",
-    "https://api.groq.com/*"
+    "https://api.openai.com/*"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"

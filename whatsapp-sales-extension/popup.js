@@ -8,7 +8,6 @@ const DEFAULT_CONFIG = {
     apiKey: '',
     model: 'deepseek-chat',
   },
-  proLicense: '',
   userNativeLang: 'zh',
   customerLang: 'en',
   contextWindow: 10,
@@ -22,17 +21,10 @@ async function loadSettings() {
   document.getElementById('llmBaseURL').value = config.llm.baseURL;
   document.getElementById('llmApiKey').value = config.llm.apiKey;
   document.getElementById('llmModel').value = config.llm.model;
-  document.getElementById('proLicense').value = config.proLicense || '';
   document.getElementById('userNativeLang').value = config.userNativeLang;
   document.getElementById('customerLang').value = config.customerLang;
   document.getElementById('contextWindow').value = config.contextWindow;
   document.getElementById('autoOpenSidePanel').checked = config.autoOpenSidePanel;
-
-  // Load STT config and toggle section visibility
-  const sttResult = await chrome.storage.local.get('pro_stt_config');
-  const sttConfig = sttResult.pro_stt_config || {};
-  document.getElementById('sttApiKey').value = sttConfig.apiKey || '';
-  document.getElementById('proSttSection').style.display = config.proLicense ? '' : 'none';
 }
 
 async function saveSettings() {
@@ -45,15 +37,12 @@ async function saveSettings() {
     btn.disabled = true;
     btn.style.opacity = '0.6';
 
-    const proLicense = document.getElementById('proLicense').value.trim();
-
     const config = {
       llm: {
         baseURL: document.getElementById('llmBaseURL').value.trim(),
         apiKey: document.getElementById('llmApiKey').value.trim(),
         model: document.getElementById('llmModel').value.trim(),
       },
-      proLicense,
       userNativeLang: document.getElementById('userNativeLang').value,
       customerLang: document.getElementById('customerLang').value,
       contextWindow: parseInt(document.getElementById('contextWindow').value, 10) || 10,
@@ -63,17 +52,6 @@ async function saveSettings() {
     console.log('[popup] Saving config:', JSON.stringify(config, null, 2));
 
     await chrome.storage.local.set({ config });
-
-    // Save STT config separately (Pro feature, key not exposed in user config)
-    if (proLicense) {
-      const proSttConfig = {
-        baseURL: 'https://api.groq.com/openai/v1',
-        apiKey: document.getElementById('sttApiKey').value.trim(),
-        model: 'whisper-large-v3-turbo',
-      };
-      await chrome.storage.local.set({ pro_stt_config: proSttConfig });
-      console.log('[popup] Saved pro_stt_config');
-    }
 
     // Verify it was saved
     const verify = await chrome.storage.local.get('config');
@@ -141,21 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('[popup] DOMContentLoaded, loading settings...');
   loadSettings();
 
-  // Toggle STT config section when Pro license is entered
-  document.getElementById('proLicense').addEventListener('input', (e) => {
-    document.getElementById('proSttSection').style.display = e.target.value.trim() ? '' : 'none';
-  });
-
   // Bind button events (Manifest V3 CSP blocks inline onclick)
   document.getElementById('saveBtn').addEventListener('click', saveSettings);
   document.getElementById('testBtn').addEventListener('click', testLLM);
 
   // Open side panel (popup click counts as user gesture)
-  document.getElementById('upgradeLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    chrome.tabs.create({ url: 'https://github.com/zhinno-robotics/whatsapp-sales-assistant#pro' });
-  });
-
   document.getElementById('openPanelBtn').addEventListener('click', async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

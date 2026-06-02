@@ -13,25 +13,11 @@ const DEFAULT_CONFIG = {
     apiKey: '',
     model: 'deepseek-chat',
   },
-  proLicense: '',
   userNativeLang: 'zh',
   customerLang: 'en',
   contextWindow: 10,
   autoOpenSidePanel: true,
 };
-
-async function getProSTTConfig() {
-  const result = await chrome.storage.local.get('pro_stt_config');
-  return result.pro_stt_config || {
-    baseURL: 'https://api.groq.com/openai/v1',
-    apiKey: '',
-    model: 'whisper-large-v3-turbo',
-  };
-}
-
-function isPro(config) {
-  return !!(config.proLicense && config.proLicense.trim());
-}
 
 // ============================================================
 // Storage Manager (chrome.storage.local)
@@ -89,35 +75,6 @@ const Storage = {
   async setSuggestions(messageId, suggestions) {
     const key = `sug_${messageId}`;
     await chrome.storage.local.set({ [key]: suggestions });
-  },
-
-  async getTranscription(messageId) {
-    const key = `trscr_${messageId}`;
-    const result = await chrome.storage.local.get(key);
-    return result[key] || null;
-  },
-
-  async setTranscription(messageId, transcription) {
-    const key = `trscr_${messageId}`;
-    await chrome.storage.local.set({ [key]: transcription });
-  },
-
-  async getAudioData(messageId) {
-    const key = `audio_${messageId}`;
-    const result = await chrome.storage.local.get(key);
-    return result[key] || null;
-  },
-
-  async setAudioData(messageId, audioData) {
-    const key = `audio_${messageId}`;
-    await chrome.storage.local.set({ [key]: audioData });
-    // Trim: keep last 50 cached audio entries
-    const allKeys = (await chrome.storage.local.get(null));
-    const audioKeys = Object.keys(allKeys).filter(k => k.startsWith('audio_'));
-    if (audioKeys.length > 50) {
-      const toRemove = audioKeys.sort().slice(0, audioKeys.length - 50);
-      await chrome.storage.local.remove(toRemove);
-    }
   },
 
   async getActiveChats(limit = 50) {
@@ -216,60 +173,6 @@ const AI = {
     const zh = await this.translate(en, 'to_user', config).catch(() => '[翻译失败]');
 
     return { en, zh };
-  },
-
-  async speechToText(audioBase64, mimeType, config) {
-    const isOpenRouter = config.stt.baseURL.includes('openrouter');
-
-    if (isOpenRouter) {
-      const url = `${config.stt.baseURL}/audio/transcriptions`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.stt.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: config.stt.model,
-          input_audio: {
-            data: audioBase64,
-            format: mimeType?.includes('ogg') ? 'ogg' : 'mp3',
-          },
-        }),
-      });
-      if (!response.ok) {
-        const errBody = await response.text();
-        throw new Error(`STT API error ${response.status}: ${errBody}`);
-      }
-      const data = await response.json();
-      return data.text || '';
-    }
-
-    // OpenAI / DeepSeek format: multipart/form-data
-    const url = `${config.stt.baseURL}/audio/transcriptions`;
-    const byteChars = atob(audioBase64);
-    const byteNums = new Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) {
-      byteNums[i] = byteChars.charCodeAt(i);
-    }
-    const byteArr = new Uint8Array(byteNums);
-    const mimeToUse = mimeType?.startsWith('audio/') ? mimeType : 'audio/ogg';
-    const blob = new Blob([byteArr], { type: mimeToUse });
-    const formData = new FormData();
-    formData.append('file', blob, 'voice.ogg');
-    formData.append('model', config.stt.model);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${config.stt.apiKey}` },
-      body: formData,
-    });
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`STT API error ${response.status}: ${errBody}`);
-    }
-    const data = await response.json();
-    return data.text || '';
   },
 
   async processIncomingMessage(msg, history, config) {
@@ -471,7 +374,6 @@ async function saveMessage(msg) {
 
 let sidepanelPort = null;
 let whatsAppStoreReady = false;
-const pendingManualTranscriptions = new Set();
 
 function broadcastToSidepanel(type, data) {
   if (sidepanelPort) {
@@ -628,13 +530,11 @@ async function handlePageEvent(type, data) {
       break;
 
     case 'voice_audio_data':
-      console.log('[wasap-bg] Voice audio received for', data.messageId);
-      await handleVoiceAudioData(data);
+      console.log('[wasap-bg] Voice audio received for', data.messageId, '(not processing in free version)');
       break;
 
     case 'voice_download_error':
       console.error('[wasap-bg] Voice download error:', data.messageId, data.error);
-      broadcastToSidepanel('transcription_error', data);
       break;
 
     case 'store_timeout':
@@ -644,60 +544,6 @@ async function handlePageEvent(type, data) {
 
     default:
       console.log('[wasap-bg] Unknown page event:', type);
-  }
-}
-
-async function handleVoiceAudioData(data) {
-  const config = await Storage.getConfig();
-
-  // Cache audio data so manual transcription doesn't need re-download
-  await Storage.setAudioData(data.messageId, {
-    base64: data.audioBase64,
-    mimeType: data.mimeType,
-    chatId: data.chatId,
-    timestamp: Date.now(),
-  });
-
-  // Pro license required for STT
-  if (!isPro(config)) {
-    broadcastToSidepanel('transcription_error', {
-      messageId: data.messageId,
-      chatId: data.chatId,
-      error: 'Pro license required for voice transcription',
-    });
-    return;
-  }
-
-  const isManual = data.manual || pendingManualTranscriptions.has(data.messageId);
-  pendingManualTranscriptions.delete(data.messageId);
-
-  try {
-    broadcastToSidepanel('transcribing', { messageId: data.messageId, chatId: data.chatId });
-
-    const sttConfig = await getProSTTConfig();
-    const text = await AI.speechToText(data.audioBase64, data.mimeType, sttConfig);
-    await Storage.setTranscription(data.messageId, text);
-
-    const messages = await Storage.getMessages(data.chatId);
-    const msg = messages.find(m => m.messageId === data.messageId);
-    if (msg) {
-      msg.transcription = text;
-      await Storage.setMessages(data.chatId, messages);
-    }
-
-    broadcastToSidepanel('transcription_ready', {
-      messageId: data.messageId,
-      chatId: data.chatId,
-      transcription: text,
-      manual: isManual,
-    });
-  } catch (e) {
-    console.error('[wasap-bg] Transcription failed:', e.message);
-    broadcastToSidepanel('transcription_error', {
-      messageId: data.messageId,
-      chatId: data.chatId,
-      error: e.message,
-    });
   }
 }
 
@@ -730,7 +576,7 @@ async function handleSidepanelCommand(msg) {
     case 'get_config': {
       const config = await Storage.getConfig();
       console.log('[wasap-bg] get_config: API key configured:', !!config.llm.apiKey);
-      sidepanelPort?.postMessage({ type: 'config', data: { ...config, isPro: isPro(config) } });
+      sidepanelPort?.postMessage({ type: 'config', data: config });
       break;
     }
 
@@ -754,13 +600,12 @@ async function handleSidepanelCommand(msg) {
       const messages = await Storage.getMessages(chatId);
       const recent = messages.slice(-limit);
 
-      // Load translations, transcriptions, and suggestions for each message
+      // Load translations and suggestions for each message
       const withTranslations = await Promise.all(
         recent.map(async (msg) => {
           const translation = await Storage.getTranslation(msg.messageId);
           const suggestions = await Storage.getSuggestions(msg.messageId);
-          const transcription = msg.transcription || await Storage.getTranscription(msg.messageId);
-          return { ...msg, translation, suggestions, transcription };
+          return { ...msg, translation, suggestions };
         })
       );
 
@@ -866,30 +711,6 @@ async function handleSidepanelCommand(msg) {
         sidepanelPort?.postMessage({ type: 'llm_test_result', data: { ok: true, reply: result } });
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'llm_test_result', data: { ok: false, error: e.message } });
-      }
-      break;
-    }
-
-    case 'transcribe_message': {
-      const config = await Storage.getConfig();
-      if (!isPro(config)) {
-        sidepanelPort?.postMessage({ type: 'transcription_error', data: { messageId: params.messageId, chatId: params.chatId, error: 'Pro license required' } });
-        return;
-      }
-      const { messageId, chatId } = params;
-      const cachedAudio = await Storage.getAudioData(messageId);
-      if (cachedAudio) {
-        await handleVoiceAudioData({
-          messageId,
-          chatId: cachedAudio.chatId || chatId,
-          audioBase64: cachedAudio.base64,
-          mimeType: cachedAudio.mimeType,
-          manual: true,
-        });
-      } else {
-        pendingManualTranscriptions.add(messageId);
-        sendToPage('transcribe_voice', { chatId, messageId });
-        setTimeout(() => pendingManualTranscriptions.delete(messageId), 60000);
       }
       break;
     }
