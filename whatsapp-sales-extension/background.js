@@ -530,8 +530,15 @@ async function handlePageEvent(type, data) {
         if (!pending.triedFallback) {
           pending.triedFallback = true;
           pendingOpenChats.set(data.chatId, pending);
-          const opened = await openWhatsAppChatTab(data.chatId, pending.number, { updateExisting: true });
-          if (opened) {
+          // Use in-page URL navigation instead of chrome.tabs.update
+          // to avoid a full page reload
+          const phone = pending.number
+            ? String(pending.number).replace(/\D/g, '')
+            : data.chatId?.endsWith('@c.us')
+              ? String(data.chatId).replace('@c.us', '').replace(/\D/g, '')
+              : '';
+          if (phone) {
+            sendToPage('open_chat_url', { chatId: data.chatId, phone });
             pendingOpenChats.delete(data.chatId);
             break;
           }
@@ -675,14 +682,16 @@ async function openWhatsAppChatTab(chatId, number = '', options = {}) {
 
   if (!options.updateExisting) return false;
 
+  // Use in-page navigation via page-script to avoid full page reload
   const targetTab = tabs.find(tab => tab.active) || tabs[0];
   if (targetTab.windowId) {
     await chrome.windows.update(targetTab.windowId, { focused: true }).catch(() => {});
   }
-  const tab = await chrome.tabs.update(targetTab.id, { active: true, url });
+  await chrome.tabs.update(targetTab.id, { active: true });
+  sendToPage('open_chat_url', { chatId, phone });
   sidepanelPort?.postMessage({
     type: 'chat_opened',
-    data: { chatId, method: 'tab_update_url_fallback', phone, tabId: tab.id },
+    data: { chatId, method: 'page_url_fallback', phone, tabId: targetTab.id },
   });
   return true;
 }

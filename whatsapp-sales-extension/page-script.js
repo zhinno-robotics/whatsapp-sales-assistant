@@ -821,7 +821,7 @@
             return;
           }
 
-          const result = await openChatById(chatId, { allowUrl: false });
+          const result = await openChatById(chatId, { allowUrl: true });
           if (result.ok) {
             emitToContent('chat_opened', { chatId, method: result.method });
             return;
@@ -1005,6 +1005,21 @@
         break;
       }
 
+      case 'open_chat_url': {
+        try {
+          const { chatId, phone } = params;
+          if (phone) {
+            window.location.assign(`https://web.whatsapp.com/send?phone=${phone}`);
+            emitToContent('chat_opened', { chatId, method: 'page_url' });
+          } else {
+            emitToContent('open_chat_error', { chatId, message: 'No phone number for URL navigation' });
+          }
+        } catch (e) {
+          emitToContent('open_chat_error', { chatId: params.chatId, message: e.message });
+        }
+        break;
+      }
+
       case 'mark_read': {
         try {
           const { chatId } = params;
@@ -1029,7 +1044,7 @@
   async function sendViaInput(chatId, text) {
     try {
       // First, navigate to the chat by clicking on it in the chat list
-      await openChatById(chatId, { allowUrl: false });
+      await openChatById(chatId, { allowUrl: true });
 
       // Wait for input to be ready, then type
       setTimeout(() => {
