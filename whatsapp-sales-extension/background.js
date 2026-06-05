@@ -19,6 +19,29 @@ const DEFAULT_CONFIG = {
   autoOpenSidePanel: true,
 };
 
+const LANGUAGE_NAMES = {
+  zh: 'Chinese (Simplified)',
+  en: 'English',
+  es: 'Spanish',
+  ar: 'Arabic',
+  pt: 'Portuguese',
+  fr: 'French',
+  de: 'German',
+  ru: 'Russian',
+  ja: 'Japanese',
+  ko: 'Korean',
+  id: 'Indonesian',
+  vi: 'Vietnamese',
+  th: 'Thai',
+  hi: 'Hindi',
+  tr: 'Turkish',
+  it: 'Italian',
+};
+
+function getLanguageName(code) {
+  return LANGUAGE_NAMES[code] || code || 'English';
+}
+
 // ============================================================
 // Storage Manager (chrome.storage.local)
 // ============================================================
@@ -26,7 +49,14 @@ const DEFAULT_CONFIG = {
 const Storage = {
   async getConfig() {
     const result = await chrome.storage.local.get('config');
-    return { ...DEFAULT_CONFIG, ...result.config };
+    return {
+      ...DEFAULT_CONFIG,
+      ...result.config,
+      llm: {
+        ...DEFAULT_CONFIG.llm,
+        ...(result.config?.llm || {}),
+      },
+    };
   },
 
   async setConfig(config) {
@@ -120,8 +150,8 @@ const AI = {
     if (!text || text.trim().length < 2) return text;
 
     const systemPrompt = direction === 'to_user'
-      ? PROMPTS.TRANSLATE_TO_USER
-      : PROMPTS.TRANSLATE_TO_CUSTOMER;
+      ? PROMPTS.TRANSLATE_TO_USER(config)
+      : PROMPTS.TRANSLATE_TO_CUSTOMER(config);
 
     const result = await this.chatCompletion([
       { role: 'system', content: systemPrompt },
@@ -133,44 +163,51 @@ const AI = {
 
   async generateSuggestions(history, customerName, config) {
     if (history.length === 0) {
-      return [
-        { en: 'Thank you for reaching out! How can I assist you today?', zh: '感谢您联系我们！请问有什么可以帮您的？' },
-        { en: 'Hi! Thanks for your message. What can I help you with?', zh: '您好！感谢您的消息，请问需要什么帮助？' },
-        { en: 'Hello! I appreciate you contacting us. What would you like to discuss?', zh: '您好！感谢您联系我们，想讨论什么内容呢？' },
-        { en: 'Thanks for getting in touch. Let me know what you need and I will get right on it.', zh: '感谢联系。请告诉我您的需求，我马上处理。' },
-        { en: 'Hi there! How can I help?', zh: '您好！需要什么帮助？' },
+      const defaultReplies = [
+        'Thank you for reaching out! How can I assist you today?',
+        'Hi! Thanks for your message. What can I help you with?',
+        'Hello! I appreciate you contacting us. What would you like to discuss?',
+        'Thanks for getting in touch. Let me know what you need and I will get right on it.',
+        'Hi there! How can I help?',
       ];
+      const customerReplies = await Promise.all(
+        defaultReplies.map(text => this.translate(text, 'to_customer', config).catch(() => text))
+      );
+      const userTranslations = await Promise.all(
+        customerReplies.map(text => this.translate(text, 'to_user', config).catch(() => '[Translation failed]'))
+      );
+      return customerReplies.map((reply, i) => ({ en: reply, zh: userTranslations[i] }));
     }
 
     const context = formatMessagesForPrompt(history);
 
     const result = await this.chatCompletion([
-      { role: 'system', content: PROMPTS.GENERATE_SUGGESTIONS(context, customerName) },
+      { role: 'system', content: PROMPTS.GENERATE_SUGGESTIONS(context, customerName, config) },
       { role: 'user', content: 'Generate 5 reply options for the latest customer message above.' },
     ], 0.7, 1200, config);
 
-    const enSuggestions = parseSuggestions(result).map(cleanPlaceholders);
-    while (enSuggestions.length < 5) {
-      enSuggestions.push('Thank you for your message. I will get back to you shortly.');
+    const customerSuggestions = parseSuggestions(result).map(cleanPlaceholders);
+    while (customerSuggestions.length < 5) {
+      customerSuggestions.push(await this.translate('Thank you for your message. I will get back to you shortly.', 'to_customer', config).catch(() => 'Thank you for your message. I will get back to you shortly.'));
     }
 
-    // Translate to user's native language in parallel
-    const zhTranslations = await Promise.all(
-      enSuggestions.map(en => this.translate(en, 'to_user', config).catch(() => '[翻译失败]'))
+    // Translate to user's native language in parallel for readable previews.
+    const userTranslations = await Promise.all(
+      customerSuggestions.map(reply => this.translate(reply, 'to_user', config).catch(() => '[Translation failed]'))
     );
 
-    return enSuggestions.map((en, i) => ({ en, zh: zhTranslations[i] }));
+    return customerSuggestions.map((reply, i) => ({ en: reply, zh: userTranslations[i] }));
   },
 
   async generateCustomReply(userPrompt, history, customerName, config) {
     const context = formatMessagesForPrompt(history);
     const enResult = await this.chatCompletion([
-      { role: 'system', content: PROMPTS.GENERATE_CUSTOM(userPrompt, context, customerName) },
+      { role: 'system', content: PROMPTS.GENERATE_CUSTOM(userPrompt, context, customerName, config) },
       { role: 'user', content: 'Generate a reply based on the instruction above.' },
     ], 0.7, 800, config);
 
     const en = cleanPlaceholders(enResult.trim());
-    const zh = await this.translate(en, 'to_user', config).catch(() => '[翻译失败]');
+    const zh = await this.translate(en, 'to_user', config).catch(() => '[Translation failed]');
 
     return { en, zh };
   },
@@ -195,30 +232,38 @@ const AI = {
 // ============================================================
 
 const PROMPTS = {
-  TRANSLATE_TO_USER: `You are a professional business translator specializing in international trade and B2B communications.
+  TRANSLATE_TO_USER(config) {
+    const targetLanguage = getLanguageName(config.userNativeLang);
+    return `You are a professional business translator specializing in international trade and B2B communications.
 
-Translate the following message into Chinese (Simplified). Follow these rules strictly:
+Translate the following message into ${targetLanguage}. Follow these rules strictly:
 
 1. Preserve ALL business terminology, product names, brand names, and proper nouns in their original form
 2. Keep ALL numbers, prices, dates, URLs, and email addresses exactly as-is
 3. Maintain the original tone: formal stays formal, casual stays casual
-4. If the message is already in Chinese, return it unchanged
-5. Return ONLY the translation text — no explanations, no notes, no prefixes`,
+4. If the message is already in ${targetLanguage}, return it unchanged
+5. Return ONLY the translation text - no explanations, no notes, no prefixes`;
+  },
 
-  TRANSLATE_TO_CUSTOMER: `You are a professional business translator specializing in international trade and B2B communications.
+  TRANSLATE_TO_CUSTOMER(config) {
+    const sourceLanguage = getLanguageName(config.userNativeLang);
+    const targetLanguage = getLanguageName(config.customerLang);
+    return `You are a professional business translator specializing in international trade and B2B communications.
 
-Translate the following message from Chinese into polished, professional English suitable for B2B customer communication. Follow these rules strictly:
+Translate the following message from ${sourceLanguage} into polished, professional ${targetLanguage} suitable for B2B customer communication. Follow these rules strictly:
 
-1. Use natural, fluent business English — not literal/word-for-word translation
+1. Use natural, fluent business ${targetLanguage} - not literal/word-for-word translation
 2. Maintain a warm yet professional tone appropriate for customer relationships
 3. Preserve ALL numbers, prices, dates, product names, and proper nouns exactly
-4. If the source message contains English words or terms, keep them in the translation
-5. Return ONLY the translation text — no explanations, no notes, no prefixes`,
+4. If the source message contains foreign words, SKU codes, product names, or industry terms, keep them when appropriate
+5. Return ONLY the translation text - no explanations, no notes, no prefixes`;
+  },
 
-  GENERATE_SUGGESTIONS(context, customerName) {
+  GENERATE_SUGGESTIONS(context, customerName, config) {
+    const targetLanguage = getLanguageName(config.customerLang);
     return `You are a senior B2B sales professional with 15 years of experience in international trade. You write natural, human-sounding messages that build genuine relationships — never stiff or robotic.
 
-Based on the customer's latest message and the conversation context below, generate 5 distinct reply options in English.
+Based on the customer's latest message and the conversation context below, generate 5 distinct reply options in ${targetLanguage}.
 
 === CONVERSATION CONTEXT ===
 ${context}
@@ -254,7 +299,8 @@ FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:
 [Concise reply text here]`;
   },
 
-  GENERATE_CUSTOM(userPrompt, context, customerName) {
+  GENERATE_CUSTOM(userPrompt, context, customerName, config) {
+    const targetLanguage = getLanguageName(config.customerLang);
     return `You are a senior B2B sales professional with 15 years of experience in international trade.
 
 === USER'S INSTRUCTION ===
@@ -265,7 +311,7 @@ ${userPrompt}
 ${context}
 === END CONTEXT ===
 
-Craft a natural, polished reply in English based on the user's instruction and context.
+Craft a natural, polished reply in ${targetLanguage} based on the user's instruction and context.
 
 RULES:
 - Write like a real person, not a robot.
@@ -374,6 +420,7 @@ async function saveMessage(msg) {
 
 let sidepanelPort = null;
 let whatsAppStoreReady = false;
+const pendingOpenChats = new Map();
 
 function broadcastToSidepanel(type, data) {
   if (sidepanelPort) {
@@ -471,6 +518,29 @@ async function handlePageEvent(type, data) {
       console.log('[wasap-bg] Message updated:', data.messageId);
       break;
 
+    case 'chat_opened':
+      pendingOpenChats.delete(data.chatId);
+      broadcastToSidepanel('chat_opened', data);
+      break;
+
+    case 'open_chat_error':
+      console.warn('[wasap-bg] Open chat failed:', data.message);
+      if (data.chatId && pendingOpenChats.has(data.chatId)) {
+        const pending = pendingOpenChats.get(data.chatId);
+        if (!pending.triedFallback) {
+          pending.triedFallback = true;
+          pendingOpenChats.set(data.chatId, pending);
+          const opened = await openWhatsAppChatTab(data.chatId, pending.number, { updateExisting: true });
+          if (opened) {
+            pendingOpenChats.delete(data.chatId);
+            break;
+          }
+        }
+        pendingOpenChats.delete(data.chatId);
+      }
+      broadcastToSidepanel('open_chat_error', data);
+      break;
+
     case 'chats_list':
       console.log('[wasap-bg] Received', data.chats?.length, 'chats');
       // Update conversations in storage
@@ -486,6 +556,7 @@ async function handlePageEvent(type, data) {
           };
         } else {
           convos[chat.chatId].name = chat.name || convos[chat.chatId].name;
+          convos[chat.chatId].number = chat.number || convos[chat.chatId].number;
           convos[chat.chatId].lastActivity = chat.timestamp || convos[chat.chatId].lastActivity;
         }
       }
@@ -565,6 +636,57 @@ function sendToPage(action, params) {
   });
 }
 
+async function openWhatsAppChatTab(chatId, number = '', options = {}) {
+  const phone = number
+    ? String(number).replace(/\D/g, '')
+    : chatId?.endsWith('@c.us')
+      ? String(chatId).replace('@c.us', '').replace(/\D/g, '')
+      : '';
+  const allTabs = await chrome.tabs.query({});
+  const tabs = allTabs.filter(tab => {
+    try {
+      return new URL(tab.url || '').hostname === 'web.whatsapp.com';
+    } catch {
+      return false;
+    }
+  });
+
+  if (!phone) {
+    sidepanelPort?.postMessage({
+      type: 'open_chat_error',
+      data: {
+        chatId,
+        hasNumber: !!number,
+        message: `No phone number available for ${chatId}; falling back to WhatsApp Store open`,
+      },
+    });
+    return false;
+  }
+
+  const url = `https://web.whatsapp.com/send?phone=${phone}`;
+  if (!tabs.length) {
+    const tab = await chrome.tabs.create({ url, active: true });
+    sidepanelPort?.postMessage({
+      type: 'chat_opened',
+      data: { chatId, method: 'tab_create_url', phone, tabId: tab.id },
+    });
+    return true;
+  }
+
+  if (!options.updateExisting) return false;
+
+  const targetTab = tabs.find(tab => tab.active) || tabs[0];
+  if (targetTab.windowId) {
+    await chrome.windows.update(targetTab.windowId, { focused: true }).catch(() => {});
+  }
+  const tab = await chrome.tabs.update(targetTab.id, { active: true, url });
+  sidepanelPort?.postMessage({
+    type: 'chat_opened',
+    data: { chatId, method: 'tab_update_url_fallback', phone, tabId: tab.id },
+  });
+  return true;
+}
+
 // ============================================================
 // Sidepanel Command Handler
 // ============================================================
@@ -612,6 +734,18 @@ async function handleSidepanelCommand(msg) {
       sidepanelPort?.postMessage({ type: 'messages_list', data: { chatId, messages: withTranslations } });
       // Also request from page for fresh data
       sendToPage('get_messages', { chatId, limit });
+      break;
+    }
+
+    case 'open_chat': {
+      const { chatId, number } = params;
+      const tabs = await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' });
+      if (tabs.length) {
+        pendingOpenChats.set(chatId, { number, ts: Date.now(), triedFallback: false });
+        sendToPage('open_chat', params);
+        break;
+      }
+      await openWhatsAppChatTab(chatId, number);
       break;
     }
 

@@ -105,7 +105,15 @@
           }
           // SendSeen / Cmd
           if (!SendSeen && key.includes('SendSeen')) SendSeen = mod;
-          if (!Cmd && (key.includes('Cmd') || key.includes('Commands'))) Cmd = mod;
+          if (!Cmd && (
+            key.includes('Cmd') ||
+            key.includes('Commands') ||
+            typeof mod.openChatAt === 'function' ||
+            typeof mod.openChatBottom === 'function' ||
+            typeof mod.openChat === 'function'
+          )) {
+            Cmd = mod;
+          }
         } catch (e) {
           // Skip
         }
@@ -192,13 +200,48 @@
   /**
    * Get contact info from a chat
    */
+  function pickPhoneLikeValue(...values) {
+    for (const value of values) {
+      if (!value) continue;
+
+      if (typeof value === 'string' || typeof value === 'number') {
+        const digits = String(value).replace(/\D/g, '');
+        if (digits.length >= 8) return digits;
+        continue;
+      }
+
+      if (typeof value === 'object') {
+        const nested = pickPhoneLikeValue(
+          value.user,
+          value.number,
+          value.phone,
+          value.phoneNumber,
+          value._serialized,
+          value.toString?.()
+        );
+        if (nested) return nested;
+      }
+    }
+    return '';
+  }
+
   function getContactInfo(chat) {
     try {
       const contact = chat.contact || chat.getContact?.();
       if (!contact) return { name: chat.name || chat.pushname || 'Unknown', number: '' };
       return {
         name: contact.name || contact.pushname || contact.shortName || contact.formattedName || 'Unknown',
-        number: contact.number || contact.userid || '',
+        number: pickPhoneLikeValue(
+          contact.number,
+          contact.userid,
+          contact.phone,
+          contact.phoneNumber,
+          contact.formattedPhoneNumber,
+          contact.id,
+          contact.wid,
+          chat.id,
+          chat.id?.user
+        ),
       };
     } catch {
       return { name: chat.name || chat.pushname || 'Unknown', number: '' };
@@ -233,7 +276,7 @@
       const contactInfo = getContactInfo(chat);
       const lastMsg = chat.lastMessage || (chat.msgs && chat.msgs.models && chat.msgs.models[chat.msgs.models.length - 1]);
       return {
-        chatId: chat.id?._serialized || chat.id || '',
+        chatId: getSerializedChatId(chat),
         name: contactInfo.name,
         number: contactInfo.number,
         timestamp: chat.t || chat.timestamp || 0,
@@ -244,6 +287,105 @@
     } catch {
       return null;
     }
+  }
+
+  function getChatModels() {
+    const chatCollection = window.Store?.Chat;
+    if (!chatCollection) return [];
+
+    if (Array.isArray(chatCollection.models)) return chatCollection.models;
+    if (Array.isArray(chatCollection._models)) return chatCollection._models;
+
+    const altProps = ['items', 'list', 'entries', 'data', 'collection'];
+    for (const prop of altProps) {
+      if (Array.isArray(chatCollection[prop])) return chatCollection[prop];
+    }
+
+    if (typeof chatCollection[Symbol.iterator] === 'function') {
+      try {
+        return [...chatCollection];
+      } catch {
+        // ignore iterator failures
+      }
+    }
+
+    if (typeof chatCollection === 'object') {
+      return Object.values(chatCollection).filter(v => v && typeof v === 'object' && (v.id || v.name));
+    }
+
+    return [];
+  }
+
+  function getSerializedChatId(chat) {
+    const candidates = [
+      chat?.id?._serialized,
+      chat?.id?.toString?.(),
+      typeof chat?.id === 'string' ? chat.id : '',
+      chat?.__x_id?._serialized,
+      chat?.__x_id?.toString?.(),
+      chat?.jid?._serialized,
+      chat?.jid?.toString?.(),
+      chat?.wid?._serialized,
+      chat?.wid?.toString?.(),
+    ];
+    return candidates.find(value => typeof value === 'string' && /@/.test(value)) || '';
+  }
+
+  function findChatById(chatId) {
+    if (!chatId || !window.Store?.Chat) return null;
+
+    const direct = window.Store.Chat.get?.(chatId);
+    if (direct) return direct;
+
+    const models = getChatModels();
+    return models.find(chat => {
+      const serialized = getSerializedChatId(chat);
+      if (serialized === chatId) return true;
+
+      const contact = chat.contact || chat.getContact?.();
+      const knownIds = [
+        contact?.id?._serialized,
+        contact?.id?.toString?.(),
+        contact?.wid?._serialized,
+        contact?.wid?.toString?.(),
+        chat?.__x_id?._serialized,
+      ].filter(Boolean);
+      return knownIds.includes(chatId);
+    }) || null;
+  }
+
+  async function openChatById(chatId, options = {}) {
+    const chat = findChatById(chatId);
+    const cmd = window.Store?.Cmd || {};
+
+    if (chat) {
+      const openers = [
+        { fn: cmd.openChatAt, ctx: cmd, name: 'Cmd.openChatAt' },
+        { fn: cmd.openChatBottom, ctx: cmd, name: 'Cmd.openChatBottom' },
+        { fn: cmd.openChat, ctx: cmd, name: 'Cmd.openChat' },
+        { fn: window.Store?.Chat?.openChatAt, ctx: window.Store?.Chat, name: 'Chat.openChatAt' },
+        { fn: window.Store?.Chat?.openChat, ctx: window.Store?.Chat, name: 'Chat.openChat' },
+      ].filter(opener => typeof opener.fn === 'function');
+
+      for (const opener of openers) {
+        try {
+          await opener.fn.call(opener.ctx, chat);
+          return { ok: true, method: opener.name, chat };
+        } catch (e) {
+          console.log('[wasap-page] open chat method failed:', opener.name, e.message);
+        }
+      }
+    }
+
+    if (options.allowUrl !== false && chatId.endsWith('@c.us')) {
+      const phone = chatId.replace('@c.us', '').replace(/\D/g, '');
+      if (phone) {
+        window.location.assign(`https://web.whatsapp.com/send?phone=${phone}`);
+        return { ok: true, method: 'url', chat };
+      }
+    }
+
+    return { ok: false, method: 'none', chat };
   }
 
   // ============================================================
@@ -671,6 +813,32 @@
         break;
       }
 
+      case 'open_chat': {
+        try {
+          const { chatId } = params;
+          if (!chatId) {
+            emitToContent('open_chat_error', { message: 'Missing chatId' });
+            return;
+          }
+
+          const result = await openChatById(chatId, { allowUrl: false });
+          if (result.ok) {
+            emitToContent('chat_opened', { chatId, method: result.method });
+            return;
+          }
+
+          emitToContent('open_chat_error', {
+            chatId,
+            message: 'Chat not found or no supported open method: ' + chatId,
+            hasChat: !!result.chat,
+            method: result.method,
+          });
+        } catch (e) {
+          emitToContent('open_chat_error', { chatId: params.chatId, message: e.message });
+        }
+        break;
+      }
+
       case 'send_message': {
         try {
           const { chatId, text } = params;
@@ -679,7 +847,7 @@
             return;
           }
 
-          const chat = window.Store.Chat?.get(chatId);
+          const chat = findChatById(chatId);
           if (!chat) {
             emitToContent('send_error', { chatId, message: 'Chat not found: ' + chatId });
             return;
@@ -742,7 +910,7 @@
       case 'get_contact': {
         try {
           const { chatId } = params;
-          const chat = window.Store.Chat?.get(chatId);
+          const chat = findChatById(chatId);
           if (chat) {
             const info = getContactInfo(chat);
             emitToContent('contact_info', { chatId, ...info });
@@ -778,7 +946,7 @@
           }
 
           // Source 3: target chat's messages
-          const chat = window.Store.Chat?.get(chatId);
+          const chat = findChatById(chatId);
           if (chat) {
             const raw = chat.msgs;
             let chatMsgs = null;
@@ -840,7 +1008,7 @@
       case 'mark_read': {
         try {
           const { chatId } = params;
-          const chat = window.Store.Chat?.get(chatId);
+          const chat = findChatById(chatId);
           if (chat && window.Store.SendSeen) {
             window.Store.SendSeen.sendSeen(chat);
           }
@@ -858,13 +1026,10 @@
   /**
    * Fallback: send message via DOM input (when Store API fails)
    */
-  function sendViaInput(chatId, text) {
+  async function sendViaInput(chatId, text) {
     try {
       // First, navigate to the chat by clicking on it in the chat list
-      const chat = window.Store.Chat?.get(chatId);
-      if (chat) {
-        window.Store.Cmd?.openChatAt?.(chat);
-      }
+      await openChatById(chatId, { allowUrl: false });
 
       // Wait for input to be ready, then type
       setTimeout(() => {
@@ -921,7 +1086,7 @@
       handleCommand(cmd);
     } else {
       // Queue commands that need Store (get_chats, get_messages, send_message, etc.)
-      const needsStore = ['get_chats', 'get_messages', 'send_message', 'get_contact', 'mark_read', 'transcribe_voice'];
+      const needsStore = ['get_chats', 'get_messages', 'send_message', 'open_chat', 'get_contact', 'mark_read', 'transcribe_voice'];
       if (needsStore.includes(cmd.action)) {
         console.log('[wasap-page] Queueing command:', cmd.action, '(Store not ready yet)');
         commandQueue.push(cmd);

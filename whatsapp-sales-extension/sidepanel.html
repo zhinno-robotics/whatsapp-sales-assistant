@@ -168,10 +168,31 @@ html.light #chatList .item .group-tag { background: #e9edef; color: #667781; }
 }
 .msg .meta { font-size: 11px; color: var(--text-time); margin-bottom: 4px; }
 .msg .trans {
-  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
-  font-size: 12px; color: var(--text-secondary);
+  margin-top: 8px; padding: 7px 9px; border-left: 3px solid var(--send-btn);
+  border-radius: 7px; background: rgba(0, 168, 132, .1);
+  font-size: 12.5px; color: var(--text-primary); line-height: 1.45;
 }
-.msg .trans::before { content: '🇨🇳 '; font-size: 11px; }
+.msg .trans::before { content: 'Translation: '; font-size: 11px; font-weight: 600; color: var(--send-btn); }
+html.light .msg .trans { background: rgba(0, 168, 132, .12); color: #111b21; }
+.msg .translation-error {
+  margin-top: 6px; padding: 6px 8px; border-radius: 6px;
+  background: rgba(255, 107, 107, .1); color: #ff6b6b; font-size: 11px;
+}
+.msg-actions {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-top: 7px;
+}
+.msg-actions button {
+  min-height: 26px; padding: 4px 8px; border-radius: 999px;
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+  cursor: pointer; font: inherit; font-size: 11px; line-height: 1;
+}
+.msg-actions button.primary {
+  border-color: var(--send-btn); background: rgba(0, 168, 132, .12); color: var(--send-btn);
+  font-weight: 600;
+}
+.msg-actions button:hover { background: var(--hover); color: var(--text-primary); }
+.msg-actions button:disabled { cursor: default; opacity: .65; }
 .msg .voice-badge {
   display: inline-block; padding: 2px 6px; background: var(--border);
   border-radius: 4px; font-size: 11px; color: var(--text-secondary);
@@ -405,9 +426,9 @@ html.light #chatList .item .group-tag { background: #e9edef; color: #667781; }
       <textarea id="aiResultZh" placeholder="AI-generated reply (editable)"></textarea>
       <div id="aiResultEn" style="display:none;margin-top:6px;padding:8px;background:var(--bg-msg-area);border-radius:6px;font-size:12px;color:var(--text-secondary)"></div>
       <div class="actions" style="margin-top:8px">
-        <button class="btn-trans" id="aiTransBtn">🌐 EN</button>
-        <button class="btn-use" id="aiSendZhBtn">Send ZH</button>
-        <button class="btn-use" id="aiSendEnBtn">Send EN</button>
+        <button class="btn-trans" id="aiTransBtn">Show Customer</button>
+        <button class="btn-use" id="aiSendZhBtn">Send User</button>
+        <button class="btn-use" id="aiSendEnBtn">Send Customer</button>
         <button class="btn-cancel" id="aiDiscardBtn">Discard</button>
       </div>
     </div>
@@ -432,8 +453,8 @@ html.light #chatList .item .group-tag { background: #e9edef; color: #667781; }
         <button class="btn-trans" id="modalTransBtn">🌐 Translate</button>
         <button class="btn-retry" id="modalRetryBtn">🔄 Retry</button>
         <button class="btn-cancel" id="modalCancelBtn">Cancel</button>
-        <button class="btn-zh" id="modalSendZhBtn">Send ZH</button>
-        <button class="btn-en" id="modalSendEnBtn">Send EN</button>
+        <button class="btn-zh" id="modalSendZhBtn">Send User</button>
+        <button class="btn-en" id="modalSendEnBtn">Send Customer</button>
       </div>
     </div>
   </div>

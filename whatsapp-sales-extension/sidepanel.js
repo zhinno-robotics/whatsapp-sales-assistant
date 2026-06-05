@@ -19,7 +19,31 @@ const state = {
   modalSuggestions: [],
   modalSelectedIdx: -1,
   config: null,
+  translatingMessages: new Set(),
 };
+
+const LANGUAGE_NAMES = {
+  zh: 'Chinese',
+  en: 'English',
+  es: 'Spanish',
+  ar: 'Arabic',
+  pt: 'Portuguese',
+  fr: 'French',
+  de: 'German',
+  ru: 'Russian',
+  ja: 'Japanese',
+  ko: 'Korean',
+  id: 'Indonesian',
+  vi: 'Vietnamese',
+  th: 'Thai',
+  hi: 'Hindi',
+  tr: 'Turkish',
+  it: 'Italian',
+};
+
+function getLanguageName(code) {
+  return LANGUAGE_NAMES[code] || code || 'English';
+}
 
 // ============================================================
 // Background Connection
@@ -106,6 +130,7 @@ function handleBgMessage(msg) {
   switch (type) {
     case 'config':
       state.config = data;
+      applyLanguageLabels();
       updateStatus('connected', 'WhatsApp Connected');
       clearTimeout(connectionTimeout);
       if (data.userNativeLang === 'zh') {
@@ -164,6 +189,10 @@ function handleBgMessage(msg) {
       handleTranslationReady(data);
       break;
 
+    case 'translate_error':
+      handleTranslateError(data);
+      break;
+
     case 'suggestions_ready':
       handleSuggestionsReady(data);
       break;
@@ -174,6 +203,15 @@ function handleBgMessage(msg) {
 
     case 'send_error':
       alert('Send failed: ' + (data.message || 'Unknown error'));
+      break;
+
+    case 'chat_opened':
+      updateStatus('connected', `WhatsApp chat synced (${data.method || 'open'})`);
+      break;
+
+    case 'open_chat_error':
+      updateStatus('connected', data.message || 'Chat selected in assistant');
+      console.warn('[sidepanel] Open WhatsApp chat failed:', data.message);
       break;
 
     case 'error':
@@ -232,10 +270,28 @@ function handleSentMessage(msg) {
 }
 
 function handleTranslationReady(data) {
+  state.translatingMessages.delete(data.messageId);
+  if (data.messageId === 'modal_temp') {
+    const $trans = document.getElementById('modalTranslation');
+    if ($trans) {
+      $trans.style.display = 'block';
+      $trans.textContent = data.translation;
+    }
+    return;
+  }
+  if (data.messageId === 'ai_temp') {
+    const $result = document.getElementById('aiResultEn');
+    if ($result) {
+      $result.textContent = data.translation;
+      $result.style.display = 'block';
+    }
+    return;
+  }
   // Update message in state
   if (state.activeChat && state.messages[state.activeChat]) {
     const msg = state.messages[state.activeChat].find(m => m.messageId === data.messageId);
     if (msg) {
+      msg.translationError = '';
       msg.translation = data.translation;
       renderMessages();
     }
@@ -244,6 +300,17 @@ function handleTranslationReady(data) {
   if (state.modalMsg && state.modalMsg.messageId === data.messageId) {
     state.modalMsg.translation = data.translation;
     updateModalTranslation();
+  }
+}
+
+function handleTranslateError(data) {
+  state.translatingMessages.delete(data.messageId);
+  if (state.activeChat && state.messages[state.activeChat]) {
+    const msg = state.messages[state.activeChat].find(m => m.messageId === data.messageId);
+    if (msg) {
+      msg.translationError = data.error || 'Translation failed';
+      renderMessages();
+    }
   }
 }
 
@@ -394,6 +461,10 @@ function selectChat(chatId) {
   // Load messages
   sendToBg('get_messages', { chatId, limit: 100 });
 
+  // Keep WhatsApp Web focused on the same conversation when possible.
+  updateStatus('connected', 'Opening WhatsApp chat...');
+  sendToBg('open_chat', { chatId, number: chat?.number || '' });
+
   // Mark as read
   sendToBg('mark_read', { chatId });
 
@@ -427,6 +498,7 @@ function renderMessage(msg) {
   const isMe = msg.fromMe;
   const time = formatTime(msg.timestamp);
   const body = msg.body || '';
+  const isTranslating = state.translatingMessages.has(msg.messageId);
 
   let content = '';
 
@@ -436,6 +508,12 @@ function renderMessage(msg) {
     content = escapeHtml(body);
     if (msg.translation) {
       content += `<div class="trans">${escapeHtml(msg.translation)}</div>`;
+    }
+    if (isTranslating) {
+      content += '<div class="loading-inline">Translating...</div>';
+    }
+    if (msg.translationError) {
+      content += `<div class="translation-error">${escapeHtml(msg.translationError)}</div>`;
     }
   } else {
     content = `<span class="voice-badge">📎 ${msg.type || 'Media'}</span>`;
@@ -459,14 +537,20 @@ function renderMessage(msg) {
     `;
   }
 
-  // Reply button for customer messages
-  const replyBtn = !isMe ? `<div style="margin-top:4px"><button class="reply-to-msg-btn" data-msgid="${escapeAttr(msg.messageId)}" style="font-size:11px;color:var(--text-secondary);background:none;border:none;cursor:pointer">↩ Reply to this message</button></div>` : '';
+  const canTranslate = !isMe && body && !msg.translation;
+  const actionBar = !isMe ? `
+    <div class="msg-actions">
+      ${canTranslate ? `<button class="translate-msg-btn primary" data-msgid="${escapeAttr(msg.messageId)}" ${isTranslating ? 'disabled' : ''}>${isTranslating ? 'Translating...' : 'Translate'}</button>` : ''}
+      ${msg.translation ? `<button class="translate-msg-btn" data-msgid="${escapeAttr(msg.messageId)}" ${isTranslating ? 'disabled' : ''}>Retranslate</button>` : ''}
+      <button class="reply-to-msg-btn" data-msgid="${escapeAttr(msg.messageId)}">Reply</button>
+    </div>
+  ` : '';
 
   return `
     <div class="msg ${isMe ? 'me' : 'customer'}">
       <div class="meta">${time}</div>
       <div>${content}</div>
-      ${replyBtn}
+      ${actionBar}
       ${suggestionsHtml}
     </div>
   `;
@@ -477,6 +561,20 @@ function toggleSuggestions(messageId) {
   if (el) {
     el.style.display = el.style.display === 'none' ? 'flex' : 'none';
   }
+}
+
+function translateMessage(messageId) {
+  if (!state.activeChat) return;
+  const msg = (state.messages[state.activeChat] || []).find(m => m.messageId === messageId);
+  if (!msg || !msg.body || state.translatingMessages.has(messageId)) return;
+
+  msg.translationError = '';
+  state.translatingMessages.add(messageId);
+  renderMessages();
+  sendToBg('translate_message', {
+    messageId,
+    body: msg.body,
+  });
 }
 
 function scrollToBottom() {
@@ -528,35 +626,22 @@ function generateAI() {
 }
 
 function translateAIResult() {
-  const zh = document.getElementById('aiResultZh').value.trim();
-  if (!zh) return;
-
-  // Use the config to translate
-  if (state.config && state.config.llm.apiKey) {
-    // Send to background for translation
-    sendToBg('translate_message', {
-      messageId: 'ai_temp',
-      body: zh,
-    });
-    // For now, just show the EN result we already have
-    document.getElementById('aiResultEn').style.display =
-      document.getElementById('aiResultEn').style.display === 'none' ? 'block' : 'none';
-  }
+  const $customerResult = document.getElementById('aiResultEn');
+  $customerResult.style.display = $customerResult.style.display === 'none' ? 'block' : 'none';
 }
 
-function sendAIResult(lang) {
+function sendAIResult(target) {
   if (!state.activeChat) return;
-  const zhText = document.getElementById('aiResultZh').value.trim();
+  const userText = document.getElementById('aiResultZh').value.trim();
 
-  if (lang === 'zh') {
-    if (zhText) {
-      sendToBg('send_message', { chatId: state.activeChat, text: zhText });
+  if (target === 'user') {
+    if (userText) {
+      sendToBg('send_message', { chatId: state.activeChat, text: userText });
       closeAIPopup();
     }
   } else {
-    // Send EN: translate zh text to English first, then send
-    if (zhText) {
-      sendToBg('send_translated', { chatId: state.activeChat, text: zhText });
+    if (userText) {
+      sendToBg('send_translated', { chatId: state.activeChat, text: userText });
       closeAIPopup();
     }
   }
@@ -697,13 +782,12 @@ function updateModalTranslation() {
   }
 }
 
-function sendModalReply(lang) {
+function sendModalReply(target) {
   if (!state.activeChat) return;
   const text = document.getElementById('modalEditText').value.trim();
   if (!text) return;
 
-  if (lang === 'en') {
-    // Translate Chinese text to English, then send
+  if (target === 'customer') {
     sendToBg('send_translated', { chatId: state.activeChat, text });
   } else {
     sendToBg('send_message', { chatId: state.activeChat, text });
@@ -741,6 +825,25 @@ function updateStatus(status, text) {
   if ($text) {
     $text.textContent = text;
   }
+}
+
+function applyLanguageLabels() {
+  const userLang = getLanguageName(state.config?.userNativeLang);
+  const customerLang = getLanguageName(state.config?.customerLang);
+  const sendUserText = `Send ${userLang}`;
+  const sendCustomerText = `Send ${customerLang}`;
+
+  const aiSendUser = document.getElementById('aiSendZhBtn');
+  const aiSendCustomer = document.getElementById('aiSendEnBtn');
+  const modalSendUser = document.getElementById('modalSendZhBtn');
+  const modalSendCustomer = document.getElementById('modalSendEnBtn');
+  const aiTrans = document.getElementById('aiTransBtn');
+
+  if (aiSendUser) aiSendUser.textContent = sendUserText;
+  if (aiSendCustomer) aiSendCustomer.textContent = sendCustomerText;
+  if (modalSendUser) modalSendUser.textContent = sendUserText;
+  if (modalSendCustomer) modalSendCustomer.textContent = sendCustomerText;
+  if (aiTrans) aiTrans.textContent = `Show ${customerLang}`;
 }
 
 // ============================================================
@@ -800,15 +903,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('aiCancelBtn').addEventListener('click', closeAIPopup);
   document.getElementById('aiGenBtn').addEventListener('click', generateAI);
   document.getElementById('aiTransBtn').addEventListener('click', translateAIResult);
-  document.getElementById('aiSendZhBtn').addEventListener('click', () => sendAIResult('zh'));
-  document.getElementById('aiSendEnBtn').addEventListener('click', () => sendAIResult('en'));
+  document.getElementById('aiSendZhBtn').addEventListener('click', () => sendAIResult('user'));
+  document.getElementById('aiSendEnBtn').addEventListener('click', () => sendAIResult('customer'));
   document.getElementById('aiDiscardBtn').addEventListener('click', closeAIPopup);
   document.getElementById('modalToggleSuggestions').addEventListener('click', toggleModalSuggestions);
   document.getElementById('modalTransBtn').addEventListener('click', translateModalText);
   document.getElementById('modalRetryBtn').addEventListener('click', retryModalSuggestions);
   document.getElementById('modalCancelBtn').addEventListener('click', closeReplyModal);
-  document.getElementById('modalSendZhBtn').addEventListener('click', () => sendModalReply('zh'));
-  document.getElementById('modalSendEnBtn').addEventListener('click', () => sendModalReply('en'));
+  document.getElementById('modalSendZhBtn').addEventListener('click', () => sendModalReply('user'));
+  document.getElementById('modalSendEnBtn').addEventListener('click', () => sendModalReply('customer'));
 
   // ── Event delegation for dynamically generated elements ──
 
@@ -822,6 +925,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Messages area clicks (suggestions toggle, sug items, reply buttons)
   document.getElementById('messages').addEventListener('click', (e) => {
+    // Translate message
+    const translateBtn = e.target.closest('.translate-msg-btn');
+    if (translateBtn && translateBtn.dataset.msgid) {
+      translateMessage(translateBtn.dataset.msgid);
+      return;
+    }
+
     // Toggle suggestions
     const toggleBtn = e.target.closest('.toggle-btn');
     if (toggleBtn && toggleBtn.dataset.msgid) {
