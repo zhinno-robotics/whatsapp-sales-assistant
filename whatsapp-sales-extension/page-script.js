@@ -105,15 +105,20 @@
           }
           // SendSeen / Cmd
           if (!SendSeen && key.includes('SendSeen')) SendSeen = mod;
-          if (!Cmd && (
-            key.includes('Cmd') ||
-            key.includes('Commands') ||
-            typeof mod.openChatAt === 'function' ||
-            typeof mod.openChatBottom === 'function' ||
-            typeof mod.openChat === 'function'
-          )) {
-            Cmd = mod;
+          
+          if (!Cmd) {
+            if (typeof mod.openChatAt === 'function' || typeof mod.openChatBottom === 'function' || typeof mod.openChat === 'function') {
+              Cmd = mod;
+              console.log('[wasap-page] Found Cmd module strictly:', key);
+            } else if (mod.Cmd && (typeof mod.Cmd.openChatAt === 'function' || typeof mod.Cmd.openChatBottom === 'function' || typeof mod.Cmd.openChat === 'function')) {
+              Cmd = mod.Cmd;
+              console.log('[wasap-page] Found Cmd module strictly inside .Cmd:', key);
+            } else if (mod.default && (typeof mod.default.openChatAt === 'function' || typeof mod.default.openChatBottom === 'function' || typeof mod.default.openChat === 'function')) {
+              Cmd = mod.default;
+              console.log('[wasap-page] Found Cmd module strictly inside .default:', key);
+            }
           }
+
           // WidFactory
           if (!WidFactory && (typeof mod.createWid === 'function' || typeof mod.createWidFromTarget === 'function')) {
             WidFactory = mod;
@@ -121,6 +126,17 @@
           }
         } catch (e) {
           // Skip
+        }
+      }
+
+      // Fallback: If Cmd still not found, search for any module containing "Cmd" or "Commands"
+      if (!Cmd) {
+        for (const [key, mod] of Object.entries(modules)) {
+          if (key.includes('Cmd') || key.includes('Commands')) {
+            Cmd = mod.Cmd || mod.default || mod;
+            console.log('[wasap-page] Fallback found Cmd module by key:', key);
+            break;
+          }
         }
       }
 
