@@ -72,7 +72,7 @@
       console.log('[wasap-page] Loaded', Object.keys(modules).length, 'module instances');
 
       // Find Chat and Msg collections
-      let Chat, Msg, SendMessage, Contact, SendSeen, Cmd;
+      let Chat, Msg, SendMessage, Contact, SendSeen, Cmd, WidFactory;
 
       for (const [key, mod] of Object.entries(modules)) {
         try {
@@ -114,6 +114,11 @@
           )) {
             Cmd = mod;
           }
+          // WidFactory
+          if (!WidFactory && (typeof mod.createWid === 'function' || typeof mod.createWidFromTarget === 'function')) {
+            WidFactory = mod;
+            console.log('[wasap-page] Found WidFactory module:', key);
+          }
         } catch (e) {
           // Skip
         }
@@ -127,6 +132,7 @@
           SendMessage: SendMessage,
           SendSeen: SendSeen,
           Cmd: Cmd,
+          WidFactory: WidFactory,
         };
         console.log('[wasap-page] Store built successfully. Chat models:', Chat.models?.length, 'Msg models:', Msg.models?.length);
         return store;
@@ -355,7 +361,32 @@
   }
 
   async function openChatById(chatId, options = {}) {
-    const chat = findChatById(chatId);
+    let chat = findChatById(chatId);
+
+    // If not found in the local cache, try using window.Store.Chat.find
+    if (!chat && window.Store?.Chat?.find) {
+      try {
+        let wid = chatId;
+        if (window.Store.WidFactory?.createWid) {
+          wid = window.Store.WidFactory.createWid(chatId);
+        } else {
+          // Fallback Wid-like object structure
+          const parts = chatId.split('@');
+          wid = {
+            _serialized: chatId,
+            user: parts[0],
+            server: parts[1],
+            toString: () => chatId,
+          };
+        }
+        console.log('[wasap-page] Chat not found in local cache. Attempting Chat.find with JID:', chatId);
+        chat = await window.Store.Chat.find(wid);
+        console.log('[wasap-page] Chat.find succeeded:', !!chat);
+      } catch (findErr) {
+        console.warn('[wasap-page] Chat.find failed:', findErr.message);
+      }
+    }
+
     const cmd = window.Store?.Cmd || {};
 
     if (chat) {
@@ -369,10 +400,18 @@
 
       for (const opener of openers) {
         try {
+          // Try passing the chat directly first
           await opener.fn.call(opener.ctx, chat);
-          return { ok: true, method: opener.name, chat };
-        } catch (e) {
-          console.log('[wasap-page] open chat method failed:', opener.name, e.message);
+          return { ok: true, method: `${opener.name}(chat)`, chat };
+        } catch (e1) {
+          console.log('[wasap-page] open chat method direct failed:', opener.name, e1.message);
+          try {
+            // Try passing { chat: chat }
+            await opener.fn.call(opener.ctx, { chat });
+            return { ok: true, method: `${opener.name}({chat})`, chat };
+          } catch (e2) {
+            console.log('[wasap-page] open chat method object failed:', opener.name, e2.message);
+          }
         }
       }
     }
@@ -821,7 +860,7 @@
             return;
           }
 
-          const result = await openChatById(chatId, { allowUrl: true });
+          const result = await openChatById(chatId, { allowUrl: false });
           if (result.ok) {
             emitToContent('chat_opened', { chatId, method: result.method });
             return;
