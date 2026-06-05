@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+.tile{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#fff;overflow:hidden;position:relative}
+
+/* ── Small: 440x280 ── */
+.small{width:440px;height:280px;background-color:#0f766e}
+.small .icon{position:absolute;top:20px;left:24px;font-size:32px}
+.small .title{position:absolute;top:72px;left:24px;font-size:24px;font-weight:700;letter-spacing:-.2px;line-height:1.2}
+.small .sub{position:absolute;top:132px;left:24px;font-size:11px;opacity:.8;line-height:1.5;max-width:260px}
+.small .badge{position:absolute;bottom:20px;left:24px;font-size:9px;opacity:.55;border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:10px}
+.small .circle{position:absolute;right:-30px;top:-40px;width:160px;height:160px;border-radius:50%;background-color:rgba(255,255,255,.05)}
+
+/* ── Large: 920x680 ── */
+.large{width:920px;height:680px;background-color:#0f172a}
+.large .gradient{position:absolute;inset:0;background:linear-gradient(150deg,#0f172a 30%,#134e4a 100%)}
+.large .glow1{position:absolute;top:-60px;right:-60px;width:400px;height:400px;border-radius:50%;background-color:rgba(20,184,166,.08)}
+.large .glow2{position:absolute;bottom:-40px;left:-40px;width:300px;height:300px;border-radius:50%;background-color:rgba(20,184,166,.06)}
+.large .text{position:absolute;left:56px;top:50%;transform:translateY(-50%);z-index:2}
+.large .title{font-size:44px;font-weight:700;letter-spacing:-.5px;line-height:1.1;margin-bottom:14px}
+.large .title .accent{color:#2dd4bf}
+.large .desc{font-size:15px;opacity:.7;line-height:1.6;max-width:360px;margin-bottom:24px}
+.large .feat{font-size:13px;display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.large .feat .d{width:7px;height:7px;border-radius:50%;background-color:#2dd4bf;flex-shrink:0}
+.large .feat .f{opacity:.6}
+.large .phone{position:absolute;right:64px;top:50%;transform:translateY(-50%);width:340px;height:540px;background-color:#111b21;border-radius:20px;border:2px solid #2a3942;box-shadow:0 20px 60px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden;z-index:2}
+.large .phone-hd{background-color:#202c33;padding:8px 14px;font-size:10px;color:#e9edef;text-align:center;font-weight:500}
+.large .phone-msgs{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:5px}
+.large .phone-msg{max-width:82%;padding:6px 8px;border-radius:8px;font-size:9px;line-height:1.4;color:#e9edef}
+.large .phone-msg.in{background-color:#202c33;align-self:flex-start;border-bottom-left-radius:3px}
+.large .phone-msg.out{background-color:#005c4b;align-self:flex-end;border-bottom-right-radius:3px}
+.large .phone-msg .tr{margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,.1);font-size:8px;color:#8696a0}
+.large .phone-bar{padding:6px 8px;background-color:#202c33;display:flex;gap:6px;align-items:flex-end}
+.large .phone-bar .inp{flex:1;background-color:#2a3942;border-radius:6px;height:28px}
+.large .phone-bar .btn{width:28px;height:28px;border-radius:6px;background-color:#00a884}
+
+/* ── Marquee: 1400x560 ── */
+.marquee{width:1400px;height:560px;background-color:#0f172a}
+.marquee .bg{position:absolute;inset:0;background:linear-gradient(160deg,#0f172a 20%,#0d2b1f 60%,#0a1a2a 100%)}
+.marquee .dot-pattern{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.03) 1px,transparent 1px);background-size:50px 50px}
+.marquee .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2}
+.marquee .emojis{font-size:40px;margin-bottom:20px;display:flex;gap:16px;opacity:.85}
+.marquee .title{font-size:56px;font-weight:700;letter-spacing:-.8px;margin-bottom:12px}
+.marquee .title .accent{color:#2dd4bf}
+.marquee .desc{font-size:17px;opacity:.65;max-width:620px;line-height:1.5;margin-bottom:28px}
+.marquee .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.marquee .pill{font-size:13px;padding:8px 20px;border-radius:20px;border:1px solid rgba(255,255,255,.1)}
+.marquee .pill.hl{background-color:rgba(20,184,166,.12);border-color:rgba(20,184,166,.2);color:#2dd4bf}
+.marquee .ft{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-size:11px;opacity:.3}
+</style>
+</head>
+<body>
+
+<!-- Small 440x280 -->
+<div class="tile small">
+  <div class="circle"></div>
+  <div class="icon">✨</div>
+  <div class="title">AI Sales<br>Copilot</div>
+  <div class="sub">Smart replies &amp; instant translation<br>for WhatsApp Web</div>
+  <div class="badge">FREE · NO LICENSE</div>
+</div>
+
+<!-- Large 920x680 -->
+<div class="tile large">
+  <div class="gradient"></div>
+  <div class="glow1"></div>
+  <div class="glow2"></div>
+  <div class="text">
+    <div class="title"><span class="accent">AI Sales</span><br>Copilot</div>
+    <div class="desc">Close more deals on WhatsApp with AI-powered translation and smart reply suggestions. Right in your browser.</div>
+    <div class="feat"><span class="d"></span> One-click translation</div>
+    <div class="feat"><span class="d"></span> 5 AI reply styles</div>
+    <div class="feat"><span class="d"></span> Custom AI copywriting</div>
+    <div class="feat"><span class="d f"></span> Bilingual send</div>
+  </div>
+  <div class="phone">
+    <div class="phone-hd">Ahmed Mohammed</div>
+    <div class="phone-msgs">
+      <div class="phone-msg in">Hi, need 500 PTFE hoses. Quote with shipping to Dubai?</div>
+      <div class="phone-msg out">Sure, let me check our stock and Dubai rates...</div>
+      <div class="phone-msg in">Thanks! Any certifications?<div class="tr">谢谢！有认证吗？</div></div>
+      <div class="phone-msg in" style="background-color:#1a2a34;border:1px solid rgba(0,168,132,.2);padding:4px 8px;margin-top:4px"><span style="color:#00a884;font-size:8px">5 AI SUGGESTIONS</span></div>
+    </div>
+    <div class="phone-bar"><div class="inp"></div><div class="btn"></div></div>
+  </div>
+</div>
+
+<!-- Marquee 1400x560 -->
+<div class="tile marquee">
+  <div class="bg"></div>
+  <div class="dot-pattern"></div>
+  <div class="center">
+    <div class="emojis">🌐 🤖 💬</div>
+    <div class="title"><span class="accent">AI Sales Copilot</span></div>
+    <div class="desc">Smart replies, real-time translation, and AI copywriting for WhatsApp Web.<br>Free. Open source. No license required.</div>
+    <div class="pills">
+      <span class="pill hl">Real-time Translation</span>
+      <span class="pill">5 AI Reply Tones</span>
+      <span class="pill">Custom AI Copywriting</span>
+      <span class="pill">Dark / Light Theme</span>
+      <span class="pill">Contact Search</span>
+    </div>
+  </div>
+  <div class="ft">Chrome Extension &middot; Edge Add-on &middot; Free &amp; Open Source</div>
+</div>
+
+</body>
+</html>

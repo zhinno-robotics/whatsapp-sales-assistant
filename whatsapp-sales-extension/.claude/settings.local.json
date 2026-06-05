@@ -6,7 +6,12 @@
       "Bash(Format-Table -AutoSize)",
       "Read(//e/OpenCode File/WhatsApp/**)",
       "PowerShell(Get-Content \"e:\\\\OpenCode File\\\\WhatsApp\\\\whatsapp-sales-extension\\\\page-script.js\" | Select-Object -Index 328 | ForEach-Object { $_.ToCharArray\\(\\) | ForEach-Object { [int]$_ } })",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git push *)",
+      "WebSearch",
+      "WebFetch(domain:www.openrouter.ai)",
+      "WebFetch(domain:deepwiki.com)"
     ]
   }
 }

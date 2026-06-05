@@ -5,12 +5,14 @@
 ### 1. 隐私政策页面（已完成 ✅）
 
 隐私政策已托管在 GitHub Pages：
+
 - **中文**: https://zhinno-robotics.github.io/whatsapp-sales-assistant/privacy.html
 - （页面右上角可切换中英文）
 
 ### 2. 商店截图（已完成 ✅）
 
 5 张 1280×800 截图已自动生成：
+
 - `store/screenshots/screenshot-1.png` — 设置弹窗（32 KB）
 - `store/screenshots/screenshot-2.png` — 聊天列表界面（40 KB）
 - `store/screenshots/screenshot-3.png` — AI 翻译 + 5 种回复建议（76 KB）
@@ -20,6 +22,7 @@
 > 如需重新生成：运行 `node store/screenshots/take-screenshots.js`
 
 ### 3. 扩展打包（已完成 ✅）
+
 2. 按 `F11` 全屏（分辨率设为 1280×800 或更高）
 3. 浏览器缩放设置为 100%（Ctrl+0）
 4. 依次截取 5 个 Frame（用浏览器截图工具或系统截图）：
@@ -43,6 +46,7 @@
 ```
 
 手动操作：
+
 1. 在文件资源管理器中打开项目目录
 2. 选中以下文件/文件夹：
    - `manifest.json`
@@ -63,33 +67,59 @@
 ## Chrome Web Store 发布步骤
 
 ### Step 1: 注册开发者
+
 1. 访问 https://chrome.google.com/webstore/devconsole
 2. 支付一次性 $5 USD 注册费
 3. 填写开发者信息
 
 ### Step 2: 提交新项目
+
 1. 点击"New Item"
 2. 上传 `.zip` 包
 3. 填写以下信息：
 
-| 字段 | 内容 |
-|------|------|
-| **Store listing language** | Chinese (Simplified) + English |
-| **Title** | AI Sales Copilot — AI 翻译与智能回复 |
-| **Short description** | WhatsApp Web 上的 AI 销售助手：实时翻译、5 种回复建议、自定义话术生成 |
-| **Detailed description** | 见 `store/listing.md` 中的中文详细描述 |
-| **Category** | Productivity |
-| **Language** | Chinese (中文) + English |
+| 字段                         | 内容                                           |
+| -------------------------- | -------------------------------------------- |
+| **Store listing language** | Chinese (Simplified) + English               |
+| **Title**                  | AI Sales Copilot — AI 翻译与智能回复                |
+| **Short description**      | WhatsApp Web 上的 AI 销售助手：实时翻译、5 种回复建议、自定义话术生成 |
+| **Detailed description**   | 见 `store/listing.md` 中的中文详细描述                |
+| **Category**               | Productivity                                 |
+| **Language**               | Chinese (中文) + English                       |
 
 4. 上传 5 张截图（至少 1 张）
-5. 上传图标（已有 128×128）
-6. **Privacy practices → 填写说明**：
-   - Single purpose: "AI-powered sales communication tools for WhatsApp Web"
-   - Data usage: 选择 "No personal data collected or shared"
-   - 但需要声明：扩展会向用户配置的第三方 AI API 发送消息文本以生成翻译/建议
+5. 上传 3 张宣传图块：Small 440×280、Large 920×680、Marquee 1400×560
+6. 上传图标（已有 128×128）
+7. **Privacy practices → 见下方 Step 3 详细说明**
 
 ### Step 3: 隐私合规声明
+
 在 Privacy 标签页：
+
+| 字段                     | 内容                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Privacy policy URL** | `https://zhinno-robotics.github.io/whatsapp-sales-assistant/whatsapp-sales-extension/privacy.html`             |
+| **Single purpose**     | AI-powered translation and smart reply suggestions for WhatsApp Web to help with B2B sales communication       |
+| **Remote code**        | No — all JS bundled locally, no eval(), no CDN, no dynamic script loading                                      |
+| **Data: 身份验证信息**       | API Key stored in chrome.storage.local, transmitted only to user-configured AI provider for auth               |
+| **Data: 个人通讯**         | Message text sent directly to user-configured AI API (HTTPS) upon user action; not logged or stored externally |
+| **其他数据类型**             | 全部不勾选                                                                                                          |
+| **3 个合规声明复选框**         | 全部勾选                                                                                                           |
+
+**Permissions justification:**
+
+| 权限                         | 理由                                                     |
+| -------------------------- | ------------------------------------------------------ |
+| storage                    | Local storage for user settings and cached messages    |
+| sidePanel                  | Display AI Sales Copilot in Chrome side panel          |
+| alarms                     | Periodic connection status refresh                     |
+| contextMenus               | "Open AI Sales Copilot" right-click menu item          |
+| tabs                       | Detect WhatsApp Web tabs for content script connection |
+| https://web.whatsapp.com/* | Inject content script to read/insert WhatsApp messages |
+| https://api.deepseek.com/* | User-configurable AI backend for translation/reply     |
+| https://openrouter.ai/*    | User-configurable AI backend (optional)                |
+| https://api.openai.com/*   | User-configurable AI backend (optional)                |
+
 - **Privacy policy URL**: 填入你在 GitHub Pages 上托管的隐私政策地址
 - **Data collection**: 勾选需要声明的权限用途：
   - `storage` — 本地存储用户设置和聊天缓存
@@ -98,6 +128,7 @@
   - Host permissions — 向用户配置的 AI API 发送文本请求
 
 ### Step 4: 提交审核
+
 - 点击 "Submit for Review"
 - 审核周期：1-3 个工作日
 - 审核通过后即可在 Chrome Web Store 上线
@@ -109,9 +140,11 @@
 Edge 浏览器在国内用户中占有率高，且加载扩展无需翻墙。
 
 ### Step 1: 注册
+
 访问 https://partner.microsoft.com/dashboard → 注册 Microsoft 开发者账号（免费）
 
 ### Step 2: 提交
+
 1. 进入 https://partner.microsoft.com/dashboard/microsoftedge
 2. 点击 "Create new extension"
 3. 上传同一个 `.zip` 包（**无需任何代码修改**）
@@ -134,11 +167,11 @@ Edge 浏览器在国内用户中占有率高，且加载扩展无需翻墙。
 
 ## 命名版本建议
 
-| 版本号 | 变更类型 |
-|--------|----------|
+| 版本号   | 变更类型       |
+| ----- | ---------- |
 | 2.2.x | Bug 修复、小优化 |
-| 2.3.0 | 新功能 |
-| 3.0.0 | 重大更新 |
+| 2.3.0 | 新功能        |
+| 3.0.0 | 重大更新       |
 
 ---
 
