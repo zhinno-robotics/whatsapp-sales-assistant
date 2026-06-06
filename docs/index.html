@@ -421,7 +421,7 @@ var SUPPORT_EMAIL = 'jchen@zhzn-cn.com';
 
 function openCheckout() {
   document.getElementById('checkoutOverlay').classList.add('show');
-  showPaypal();
+  backToMethods();
 }
 
 function closeCheckout() {
@@ -438,22 +438,19 @@ function showPaypal() {
   document.getElementById('stepMethod').style.display = 'none';
   document.getElementById('stepPaypal').style.display = 'block';
   document.getElementById('stepWechat').style.display = 'none';
-
-  // Build PayPal link with custom amount
-  var link = document.getElementById('paypalLink');
-  link.addEventListener('click', function(e) {
-    var email = document.getElementById('ppEmail').value.trim();
-    if (!email || email.indexOf('@') < 0) {
-      e.preventDefault();
-      alert('Please enter your email first.');
-      document.getElementById('ppEmail').focus();
-      return;
-    }
-    // PayPal.Me accepts notes via URL; use it to pass email
-    var url = 'https://paypal.me/' + PAYPAL_ME_USERNAME + '/9.90';
-    link.href = url;
-  });
 }
+
+// PayPal link — build on click
+document.getElementById('paypalLink').addEventListener('click', function(e) {
+  var email = document.getElementById('ppEmail').value.trim();
+  if (!email || email.indexOf('@') < 0) {
+    e.preventDefault();
+    alert('Please enter your email first so we can send your license key.');
+    document.getElementById('ppEmail').focus();
+    return;
+  }
+  this.href = 'https://paypal.me/' + PAYPAL_ME_USERNAME + '/9.90';
+});
 
 function showWechat() {
   document.getElementById('stepMethod').style.display = 'none';
