@@ -1,5 +1,6 @@
 /**
  * popup.js - Settings popup logic
+ * AI + Language + Behavior + Pro License tabs
  */
 
 const DEFAULT_CONFIG = {
@@ -12,6 +13,8 @@ const DEFAULT_CONFIG = {
   customerLang: 'en',
   contextWindow: 10,
   autoOpenSidePanel: true,
+  licenseKey: '',
+  licenseEmail: '',
 };
 
 function mergeConfig(config = {}) {
@@ -36,6 +39,11 @@ async function loadSettings() {
   document.getElementById('customerLang').value = config.customerLang;
   document.getElementById('contextWindow').value = config.contextWindow;
   document.getElementById('autoOpenSidePanel').checked = config.autoOpenSidePanel;
+  document.getElementById('licenseKey').value = config.licenseKey || '';
+  document.getElementById('licenseEmail').value = config.licenseEmail || '';
+
+  // Load Pro status & quota
+  await updateLicenseStatus();
 }
 
 function collectSettings() {
@@ -49,6 +57,8 @@ function collectSettings() {
     customerLang: document.getElementById('customerLang').value,
     contextWindow: parseInt(document.getElementById('contextWindow').value, 10) || 10,
     autoOpenSidePanel: document.getElementById('autoOpenSidePanel').checked,
+    licenseKey: document.getElementById('licenseKey').value.trim(),
+    licenseEmail: document.getElementById('licenseEmail').value.trim(),
   };
 }
 
@@ -62,17 +72,12 @@ async function saveSettings() {
     btn.disabled = true;
 
     const config = collectSettings();
-    console.log('[popup] Saving config:', JSON.stringify({ ...config, llm: { ...config.llm, apiKey: '***' } }, null, 2));
+    console.log('[popup] Saving config:', JSON.stringify({ ...config, llm: { ...config.llm, apiKey: '***' }, licenseKey: '***' }, null, 2));
 
     await chrome.storage.local.set({ config });
 
-    const verify = await chrome.storage.local.get('config');
-    console.log('[popup] Verified saved config:', JSON.stringify({
-      ...verify.config,
-      llm: { ...(verify.config?.llm || {}), apiKey: '***' },
-    }, null, 2));
-
     showStatus('Settings saved successfully.', 'success');
+    await updateLicenseStatus();
   } catch (e) {
     console.error('[popup] Save error:', e);
     showStatus('Save failed: ' + e.message, 'error');
@@ -80,6 +85,95 @@ async function saveSettings() {
     btn.textContent = originalText;
     btn.disabled = false;
   }
+}
+
+async function updateLicenseStatus() {
+  const result = await chrome.storage.local.get('config');
+  const config = mergeConfig(result.config);
+  const statusEl = document.getElementById('licenseStatus');
+  const quotaEl = document.getElementById('licenseQuota');
+  const msgEl = document.getElementById('licenseMsg');
+
+  if (!statusEl) return;
+
+  // Get daily usage
+  const usageResult = await chrome.storage.local.get('dailyUsage');
+  const usage = usageResult.dailyUsage || { date: '', count: 0 };
+  const today = new Date().toISOString().split('T')[0];
+  const todayCount = usage.date === today ? usage.count : 0;
+
+  if (config.licenseKey && config.licenseEmail) {
+    statusEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">Pro Active</span> &mdash; ' + config.licenseEmail;
+    statusEl.style.borderColor = 'var(--accent)';
+    if (quotaEl) quotaEl.textContent = 'Unlimited AI operations';
+    if (msgEl) msgEl.textContent = '';
+  } else {
+    statusEl.innerHTML = '<span style="color:var(--muted);">Free Tier</span> &mdash; 25 AI ops/day';
+    statusEl.style.borderColor = 'var(--line)';
+    if (quotaEl) quotaEl.textContent = `Used today: ${todayCount} / 25`;
+    if (msgEl) msgEl.textContent = '';
+  }
+}
+
+async function activateLicense() {
+  const licenseKey = document.getElementById('licenseKey').value.trim();
+  const email = document.getElementById('licenseEmail').value.trim();
+  const msgEl = document.getElementById('licenseMsg');
+
+  if (!licenseKey || !email) {
+    msgEl.textContent = 'Please enter both email and license key.';
+    msgEl.style.color = 'var(--danger)';
+    return;
+  }
+
+  msgEl.textContent = 'Validating...';
+  msgEl.style.color = 'var(--muted)';
+
+  try {
+    const bgResponse = await chrome.runtime.sendMessage({
+      source: 'popup',
+      action: 'validate_license',
+      params: { licenseKey, email },
+    });
+
+    if (bgResponse && bgResponse.valid) {
+      msgEl.textContent = 'Pro activated! Expires: ' + bgResponse.expiryDate;
+      msgEl.style.color = 'var(--accent)';
+      // Save to config
+      const result = await chrome.storage.local.get('config');
+      const config = mergeConfig(result.config);
+      config.licenseKey = licenseKey;
+      config.licenseEmail = email;
+      await chrome.storage.local.set({ config });
+      await updateLicenseStatus();
+    } else {
+      msgEl.textContent = (bgResponse && bgResponse.reason) || 'Invalid license key.';
+      msgEl.style.color = 'var(--danger)';
+    }
+  } catch (e) {
+    // Fallback: direct storage save
+    const result = await chrome.storage.local.get('config');
+    const config = mergeConfig(result.config);
+    config.licenseKey = licenseKey;
+    config.licenseEmail = email;
+    await chrome.storage.local.set({ config });
+    msgEl.textContent = 'License saved. Restart side panel to apply.';
+    msgEl.style.color = 'var(--accent)';
+    await updateLicenseStatus();
+  }
+}
+
+async function deactivateLicense() {
+  const result = await chrome.storage.local.get('config');
+  const config = mergeConfig(result.config);
+  config.licenseKey = '';
+  config.licenseEmail = '';
+  await chrome.storage.local.set({ config });
+  document.getElementById('licenseKey').value = '';
+  document.getElementById('licenseEmail').value = '';
+  document.getElementById('licenseMsg').textContent = 'Pro deactivated. Back to Free tier.';
+  document.getElementById('licenseMsg').style.color = 'var(--muted)';
+  await updateLicenseStatus();
 }
 
 async function testLLM() {
@@ -147,9 +241,10 @@ function focusSection(sectionName) {
 
 function bindTabs() {
   document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
+    tab.addEventListener('click', async () => {
       focusSection(tab.id.replace('tab-', ''));
       showStatus('', '');
+      if (tab.id === 'tab-license') await updateLicenseStatus();
     });
   });
 }
@@ -178,4 +273,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('saveBtn').addEventListener('click', saveSettings);
   document.getElementById('testBtn').addEventListener('click', testLLM);
   document.getElementById('openPanelBtn').addEventListener('click', openSidePanel);
+
+  // License buttons
+  const activateBtn = document.getElementById('activateBtn');
+  const deactivateBtn = document.getElementById('deactivateBtn');
+  if (activateBtn) activateBtn.addEventListener('click', activateLicense);
+  if (deactivateBtn) deactivateBtn.addEventListener('click', deactivateLicense);
 });

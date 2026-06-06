@@ -1,6 +1,7 @@
 /**
  * background.js — Service Worker
- * AI calls, chrome.storage management, message routing.
+ * AI calls, chrome.storage management, message routing,
+ * daily quota (Free: 25 msgs/day) + Pro license validation.
  */
 
 // ============================================================
@@ -17,6 +18,9 @@ const DEFAULT_CONFIG = {
   customerLang: 'en',
   contextWindow: 10,
   autoOpenSidePanel: true,
+  // Pro license
+  licenseKey: '',
+  licenseEmail: '',
 };
 
 const LANGUAGE_NAMES = {
@@ -40,6 +44,121 @@ const LANGUAGE_NAMES = {
 
 function getLanguageName(code) {
   return LANGUAGE_NAMES[code] || code || 'English';
+}
+
+// ============================================================
+// Pro License Validation (HMAC-SHA256, offline)
+// ============================================================
+
+const LICENSE_SECRET = new TextEncoder().encode('aisc-pro-secret-2026');
+
+/**
+ * Parse a license key string: "AISC-XXXX-XXXX-XXXX-XXXX"
+ * Returns { email, expiry, signature } or null.
+ */
+function parseLicenseKey(key) {
+  if (!key || typeof key !== 'string') return null;
+  const cleaned = key.replace(/\s+/g, '').replace(/-/g, '');  // remove dashes & spaces
+  if (!cleaned.startsWith('AISC')) return null;
+  // Format: AISC + 12 hex (signature) + 8 hex (expiry YYYYMMDD)
+  // Total after AISC: 20 hex chars
+  const payload = cleaned.substring(4); // after "AISC"
+  if (payload.length < 20) return null;
+  const signature = payload.substring(0, 12);
+  const expiryHex = payload.substring(12, 20);
+  // Remaining chars are email (hex-encoded)
+  const emailHex = payload.substring(20);
+  if (!emailHex || emailHex.length === 0) return null;
+  try {
+    const email = emailHex.match(/.{1,2}/g).map(b => String.fromCharCode(parseInt(b, 16))).join('');
+    const expiry = parseInt(expiryHex, 16); // Unix timestamp in days (not seconds)
+    return { email, expiry, signature, emailHex, expiryHex };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate a Pro license key.
+ * Uses HMAC-SHA256. The signature covers email + expiry.
+ */
+async function validateLicenseKey(licenseKey, email) {
+  if (!licenseKey || !email) return { valid: false, reason: 'License key and email are required.' };
+  const parsed = parseLicenseKey(licenseKey);
+  if (!parsed) {
+    return { valid: false, reason: 'Invalid license key format. Expected: AISC-XXXX-XXXX-XXXX-XXXX' };
+  }
+  if (parsed.email.toLowerCase() !== email.trim().toLowerCase()) {
+    return { valid: false, reason: 'License key does not match this email address.' };
+  }
+  // Check expiry (expiry is days since epoch for simplicity)
+  const nowDays = Math.floor(Date.now() / 86400000); // days since epoch
+  if (parsed.expiry < nowDays) {
+    const expiryDate = new Date(parsed.expiry * 86400000);
+    return { valid: false, reason: `License expired on ${expiryDate.toISOString().split('T')[0]}.` };
+  }
+  // Verify signature
+  const message = new TextEncoder().encode(parsed.email.toLowerCase() + ':' + parsed.expiryHex);
+  const key = await crypto.subtle.importKey('raw', LICENSE_SECRET, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, message);
+  const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 12);
+  if (sigHex !== parsed.signature) {
+    return { valid: false, reason: 'License key signature is invalid.' };
+  }
+  const expiryDate = new Date(parsed.expiry * 86400000);
+  return { valid: true, expiryDate: expiryDate.toISOString().split('T')[0], email: parsed.email };
+}
+
+// ============================================================
+// Daily Quota Tracking (Free tier: 25 AI operations/day)
+// ============================================================
+
+async function getDailyUsage() {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const result = await chrome.storage.local.get('dailyUsage');
+  const usage = result.dailyUsage || {};
+  if (usage.date !== today) {
+    return { date: today, count: 0 };
+  }
+  return usage;
+}
+
+async function incrementDailyUsage() {
+  const today = new Date().toISOString().split('T')[0];
+  const usage = await getDailyUsage();
+  if (usage.date !== today) {
+    usage.date = today;
+    usage.count = 1;
+  } else {
+    usage.count++;
+  }
+  await chrome.storage.local.set({ dailyUsage: usage });
+  return usage;
+}
+
+async function isPro(config) {
+  if (!config || !config.licenseKey || !config.licenseEmail) return false;
+  // Validate and cache result
+  const result = await validateLicenseKey(config.licenseKey, config.licenseEmail);
+  return result.valid;
+}
+
+async function checkQuota(config) {
+  const pro = await isPro(config);
+  if (pro) return { allowed: true, pro: true, remaining: Infinity };
+
+  const usage = await getDailyUsage();
+  const FREE_LIMIT = 25;
+  if (usage.count >= FREE_LIMIT) {
+    return {
+      allowed: false,
+      pro: false,
+      remaining: 0,
+      limit: FREE_LIMIT,
+      message: `Daily free limit (${FREE_LIMIT} messages) reached. Upgrade to Pro for unlimited access.`
+    };
+  }
+  return { allowed: true, pro: false, remaining: FREE_LIMIT - usage.count - 1, limit: FREE_LIMIT };
 }
 
 // ============================================================
@@ -80,7 +199,6 @@ const Storage = {
 
   async setMessages(chatId, messages) {
     const key = `msgs_${chatId}`;
-    // Trim old messages (keep last 200)
     const trimmed = messages.slice(-200);
     await chrome.storage.local.set({ [key]: trimmed });
   },
@@ -191,7 +309,6 @@ const AI = {
       customerSuggestions.push(await this.translate('Thank you for your message. I will get back to you shortly.', 'to_customer', config).catch(() => 'Thank you for your message. I will get back to you shortly.'));
     }
 
-    // Translate to user's native language in parallel for readable previews.
     const userTranslations = await Promise.all(
       customerSuggestions.map(reply => this.translate(reply, 'to_user', config).catch(() => '[Translation failed]'))
     );
@@ -368,7 +485,6 @@ function cleanPlaceholders(text) {
 // ============================================================
 
 async function handleNewMessage(msg) {
-  // Save message (no auto-translation — user clicks translate button)
   await saveMessage(msg);
 
   broadcastToSidepanel('new_message', {
@@ -379,7 +495,6 @@ async function handleNewMessage(msg) {
 }
 
 async function saveMessage(msg) {
-  // Update conversation
   const convos = await Storage.getConversations();
   if (!convos[msg.chatId]) {
     convos[msg.chatId] = {
@@ -393,7 +508,6 @@ async function saveMessage(msg) {
   if (msg.contactName) convos[msg.chatId].name = msg.contactName;
   await Storage.setConversations(convos);
 
-  // Save message
   const messages = await Storage.getMessages(msg.chatId);
   const existingIdx = messages.findIndex(m => m.messageId === msg.messageId);
   const msgObj = {
@@ -436,7 +550,6 @@ function broadcastToSidepanel(type, data) {
 // Event Handlers
 // ============================================================
 
-// Sidepanel connection
 chrome.runtime.onConnect.addListener((port) => {
   console.log('[wasap-bg] Port connected:', port.name, 'from tab:', port.sender?.tab?.id);
   if (port.name === 'sidepanel') {
@@ -455,17 +568,13 @@ chrome.runtime.onConnect.addListener((port) => {
       }
     });
 
-    // If WhatsApp Store was already ready before sidepanel connected,
-    // re-send the event so the sidepanel knows the connection is alive
     if (whatsAppStoreReady) {
       port.postMessage({ type: 'whatsapp_ready', data: {} });
-      // Re-request chat list so sidepanel gets fresh data
       sendToPage('get_chats', {});
     }
   }
 });
 
-// Content script messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.source === 'content-script' && message.type === 'content_ready') {
     console.log('[wasap-bg] Content script ready');
@@ -479,14 +588,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     sendResponse({ ok: true });
   }
+
+  // Popup messages (license validation, etc.)
+  if (message.source === 'popup') {
+    handlePopupMessage(message.action, message.params).then(result => {
+      sendResponse(result);
+    }).catch(e => {
+      sendResponse({ valid: false, reason: e.message });
+    });
+    return true; // keep channel open for async response
+  }
   return false;
 });
-
-// Side panel auto-open — only works in response to user gestures
-// Users can open via:
-// 1. Right-click on WhatsApp Web → "Open Sales Assistant"
-// 2. Click extension icon → popup has "Open Side Panel" button
-// 3. Pin the extension and click the icon (if no popup)
 
 // ============================================================
 // Page Event Handler
@@ -499,7 +612,6 @@ async function handlePageEvent(type, data) {
       console.log('[wasap-bg] WhatsApp Web Store ready');
       whatsAppStoreReady = true;
       broadcastToSidepanel('whatsapp_ready', {});
-      // Fetch initial chat list
       sendToPage('get_chats', {});
       break;
 
@@ -510,7 +622,6 @@ async function handlePageEvent(type, data) {
     case 'new_message':
       console.log('[wasap-bg] New message:', data.chatId, data.body?.substring(0, 40));
       await handleNewMessage(data);
-      // Refresh chat list
       sendToPage('get_chats', {});
       break;
 
@@ -530,8 +641,6 @@ async function handlePageEvent(type, data) {
         if (!pending.triedFallback) {
           pending.triedFallback = true;
           pendingOpenChats.set(data.chatId, pending);
-          // Use in-page URL navigation instead of chrome.tabs.update
-          // to avoid a full page reload
           const phone = pending.number
             ? String(pending.number).replace(/\D/g, '')
             : data.chatId?.endsWith('@c.us')
@@ -550,7 +659,6 @@ async function handlePageEvent(type, data) {
 
     case 'chats_list':
       console.log('[wasap-bg] Received', data.chats?.length, 'chats');
-      // Update conversations in storage
       const convos = await Storage.getConversations();
       for (const chat of (data.chats || [])) {
         if (!convos[chat.chatId]) {
@@ -573,7 +681,6 @@ async function handlePageEvent(type, data) {
 
     case 'messages_list':
       console.log('[wasap-bg] Received', data.messages?.length, 'messages for', data.chatId);
-      // Save messages to storage
       for (const msg of (data.messages || [])) {
         const existing = await Storage.getTranslation(msg.messageId);
         broadcastToSidepanel('message_loaded', {
@@ -585,7 +692,6 @@ async function handlePageEvent(type, data) {
 
     case 'send_success':
       console.log('[wasap-bg] Message sent:', data.chatId);
-      // Save sent message
       const sentMsg = {
         messageId: `sent_${Date.now()}`,
         chatId: data.chatId,
@@ -608,7 +714,7 @@ async function handlePageEvent(type, data) {
       break;
 
     case 'voice_audio_data':
-      console.log('[wasap-bg] Voice audio received for', data.messageId, '(not processing in free version)');
+      console.log('[wasap-bg] Voice audio received for', data.messageId, '(Pro feature — not available in free version)');
       break;
 
     case 'voice_download_error':
@@ -682,7 +788,6 @@ async function openWhatsAppChatTab(chatId, number = '', options = {}) {
 
   if (!options.updateExisting) return false;
 
-  // Use in-page navigation via page-script to avoid full page reload
   const targetTab = tabs.find(tab => tab.active) || tabs[0];
   if (targetTab.windowId) {
     await chrome.windows.update(targetTab.windowId, { focused: true }).catch(() => {});
@@ -697,6 +802,21 @@ async function openWhatsAppChatTab(chatId, number = '', options = {}) {
 }
 
 // ============================================================
+// Popup Message Handler (short-lived connection)
+// ============================================================
+
+async function handlePopupMessage(action, params = {}) {
+  switch (action) {
+    case 'validate_license': {
+      const { licenseKey, email } = params;
+      return await validateLicenseKey(licenseKey, email);
+    }
+    default:
+      return { valid: false, reason: 'Unknown action: ' + action };
+  }
+}
+
+// ============================================================
 // Sidepanel Command Handler
 // ============================================================
 
@@ -706,8 +826,16 @@ async function handleSidepanelCommand(msg) {
   switch (action) {
     case 'get_config': {
       const config = await Storage.getConfig();
-      console.log('[wasap-bg] get_config: API key configured:', !!config.llm.apiKey);
-      sidepanelPort?.postMessage({ type: 'config', data: config });
+      const usage = await getDailyUsage();
+      const pro = await isPro(config);
+      console.log('[wasap-bg] get_config: API key configured:', !!config.llm.apiKey, 'Pro:', pro);
+      sidepanelPort?.postMessage({ type: 'config', data: {
+        ...config,
+        llm: { ...config.llm, apiKey: config.llm.apiKey ? '***' : '' },
+        isPro: pro,
+        dailyUsage: usage,
+        freeLimit: 25,
+      }});
       break;
     }
 
@@ -717,11 +845,35 @@ async function handleSidepanelCommand(msg) {
       break;
     }
 
+    case 'validate_license': {
+      const { licenseKey, email } = params;
+      if (!licenseKey || !email) {
+        sidepanelPort?.postMessage({ type: 'license_result', data: { valid: false, reason: 'License key and email are required.' } });
+        return;
+      }
+      const result = await validateLicenseKey(licenseKey, email);
+      if (result.valid) {
+        // Save to config
+        const config = await Storage.getConfig();
+        config.licenseKey = licenseKey;
+        config.licenseEmail = email;
+        await Storage.setConfig(config);
+      }
+      sidepanelPort?.postMessage({ type: 'license_result', data: result });
+      break;
+    }
+
+    case 'get_quota': {
+      const config = await Storage.getConfig();
+      const quota = await checkQuota(config);
+      sidepanelPort?.postMessage({ type: 'quota_info', data: quota });
+      break;
+    }
+
     case 'get_chats': {
       const chats = await Storage.getActiveChats(params.limit || 50);
       console.log('[wasap-bg] get_chats: returning', chats.length, 'chats from storage');
       sidepanelPort?.postMessage({ type: 'chats_list', data: { chats } });
-      // Also request fresh data from page
       sendToPage('get_chats', {});
       break;
     }
@@ -730,8 +882,6 @@ async function handleSidepanelCommand(msg) {
       const { chatId, limit = 50 } = params;
       const messages = await Storage.getMessages(chatId);
       const recent = messages.slice(-limit);
-
-      // Load translations and suggestions for each message
       const withTranslations = await Promise.all(
         recent.map(async (msg) => {
           const translation = await Storage.getTranslation(msg.messageId);
@@ -739,9 +889,7 @@ async function handleSidepanelCommand(msg) {
           return { ...msg, translation, suggestions };
         })
       );
-
       sidepanelPort?.postMessage({ type: 'messages_list', data: { chatId, messages: withTranslations } });
-      // Also request from page for fresh data
       sendToPage('get_messages', { chatId, limit });
       break;
     }
@@ -770,10 +918,16 @@ async function handleSidepanelCommand(msg) {
         sidepanelPort?.postMessage({ type: 'send_error', data: { message: 'No API key configured' } });
         return;
       }
+      // Check quota
+      const quota = await checkQuota(config);
+      if (!quota.allowed) {
+        sidepanelPort?.postMessage({ type: 'send_error', data: { message: quota.message } });
+        return;
+      }
       try {
         const enText = await AI.translate(text, 'to_customer', config);
+        await incrementDailyUsage();
         sendToPage('send_message', { chatId, text: enText });
-        // Cache the sent message immediately so UI updates
         const sentMsg = {
           messageId: 'sent_' + Date.now(),
           chatId,
@@ -783,6 +937,9 @@ async function handleSidepanelCommand(msg) {
         };
         await saveMessage(sentMsg);
         broadcastToSidepanel('message_sent', sentMsg);
+        // Broadcast updated quota
+        const newUsage = await getDailyUsage();
+        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'send_error', data: { message: 'Translation failed: ' + e.message } });
       }
@@ -796,10 +953,20 @@ async function handleSidepanelCommand(msg) {
         sidepanelPort?.postMessage({ type: 'translate_error', data: { messageId, error: 'No API key configured' } });
         return;
       }
+      // Check quota
+      const quota = await checkQuota(config);
+      if (!quota.allowed) {
+        sidepanelPort?.postMessage({ type: 'translate_error', data: { messageId, error: quota.message } });
+        return;
+      }
       try {
         const translation = await AI.translate(body, 'to_user', config);
+        await incrementDailyUsage();
         await Storage.setTranslation(messageId, translation);
         sidepanelPort?.postMessage({ type: 'translation_ready', data: { messageId, translation } });
+        // Broadcast updated quota
+        const newUsage = await getDailyUsage();
+        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'translate_error', data: { messageId, error: e.message } });
       }
@@ -813,14 +980,24 @@ async function handleSidepanelCommand(msg) {
         sidepanelPort?.postMessage({ type: 'suggestions_error', data: { messageId, error: 'No API key configured' } });
         return;
       }
+      // Check quota
+      const quota = await checkQuota(config);
+      if (!quota.allowed) {
+        sidepanelPort?.postMessage({ type: 'suggestions_error', data: { messageId, error: quota.message } });
+        return;
+      }
       try {
         const history = await Storage.getMessages(chatId);
         const recentHistory = history.slice(-config.contextWindow);
         const convos = await Storage.getConversations();
         const customerName = convos[chatId]?.name || '';
         const suggestions = await AI.generateSuggestions(recentHistory, customerName, config);
+        await incrementDailyUsage();
         await Storage.setSuggestions(messageId, suggestions);
         sidepanelPort?.postMessage({ type: 'suggestions_ready', data: { messageId, suggestions } });
+        // Broadcast updated quota
+        const newUsage = await getDailyUsage();
+        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'suggestions_error', data: { messageId, error: e.message } });
       }
@@ -834,11 +1011,21 @@ async function handleSidepanelCommand(msg) {
         sidepanelPort?.postMessage({ type: 'custom_reply_error', data: { error: 'No API key configured' } });
         return;
       }
+      // Check quota
+      const quota = await checkQuota(config);
+      if (!quota.allowed) {
+        sidepanelPort?.postMessage({ type: 'custom_reply_error', data: { error: quota.message } });
+        return;
+      }
       try {
         const convos = await Storage.getConversations();
         const customerName = convos[chatId]?.name || '';
         const result = await AI.generateCustomReply(prompt, history || [], customerName, config);
+        await incrementDailyUsage();
         sidepanelPort?.postMessage({ type: 'custom_reply_ready', data: result });
+        // Broadcast updated quota
+        const newUsage = await getDailyUsage();
+        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'custom_reply_error', data: { error: e.message } });
       }
@@ -885,7 +1072,6 @@ chrome.runtime.onInstalled.addListener((details) => {
 (async function init() {
   console.log('[wasap-bg] Service worker initializing...');
 
-  // Remove existing context menu to avoid duplicate (service worker can restart)
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'open-sidepanel',
@@ -902,9 +1088,6 @@ chrome.runtime.onInstalled.addListener((details) => {
       });
     }
   });
-
-  // Note: sidePanel.open() requires user gesture, so we can't auto-open on init.
-  // Users must click the extension icon or right-click → "Open Sales Assistant".
 })();
 
 console.log('[wasap-bg] Service worker started');

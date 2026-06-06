@@ -956,3 +956,43 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial status
   updateStatus('connecting', 'Connecting to WhatsApp...');
 });
+
+// ============================================================
+// Quota & Pro Banner
+// ============================================================
+
+function updateQuotaBanner(data) {
+  const upgradeBanner = document.getElementById('upgradeBanner');
+  const proBanner = document.getElementById('proBanner');
+  const quotaSpan = document.getElementById('quotaRemaining');
+
+  if (!upgradeBanner || !proBanner) return;
+
+  if (data.pro) {
+    upgradeBanner.style.display = 'none';
+    proBanner.style.display = 'block';
+  } else {
+    proBanner.style.display = 'none';
+    upgradeBanner.style.display = 'block';
+    if (quotaSpan) quotaSpan.textContent = data.remaining >= 0 ? data.remaining : 0;
+
+    // Warn when low
+    if (data.remaining <= 5) {
+      upgradeBanner.style.background = 'linear-gradient(135deg,#8b0000,#ff4444)';
+    } else if (data.remaining <= 10) {
+      upgradeBanner.style.background = 'linear-gradient(135deg,#8b4513,#ff8c00)';
+    } else {
+      upgradeBanner.style.background = 'linear-gradient(135deg,#005c4b,#00a884)';
+    }
+  }
+}
+
+// Click banner to open settings popup
+document.addEventListener('DOMContentLoaded', function() {
+  const banner = document.getElementById('upgradeBanner');
+  if (banner) {
+    banner.addEventListener('click', function() {
+      chrome.runtime.sendMessage({ source: 'popup', action: 'open_popup' });
+    });
+  }
+});
