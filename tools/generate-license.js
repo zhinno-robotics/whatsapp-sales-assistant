@@ -35,9 +35,9 @@ function generateLicense(email, expiryDaysFromNow) {
   // Email: hex-encoded
   const emailHex = Buffer.from(email.trim().toLowerCase()).toString('hex');
 
-  // Signature: HMAC-SHA256(email:expiryHex) — first 12 hex chars
-  const message = email.trim().toLowerCase() + ':' + expiryHex;
-  const sig = crypto.createHmac('sha256', SECRET).update(message).digest('hex').substring(0, 12);
+  // Signature: first 12 chars of SHA-256(secret + ':' + email + ':' + expiryHex)
+  const sigInput = SECRET + ':' + email.trim().toLowerCase() + ':' + expiryHex;
+  const sig = crypto.createHash('sha256').update(sigInput).digest('hex').substring(0, 12);
 
   // Build key: AISC + sig + expiryHex + emailHex
   const raw = 'AISC' + sig + expiryHex + emailHex;

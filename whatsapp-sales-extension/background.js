@@ -47,66 +47,73 @@ function getLanguageName(code) {
 }
 
 // ============================================================
-// Pro License Validation (HMAC-SHA256, offline)
+// Pro License Validation (SHA-256, offline)
 // ============================================================
 
-const LICENSE_SECRET = new TextEncoder().encode('aisc-pro-secret-2026');
+const LICENSE_SECRET = 'aisc-pro-secret-2026';
 
 /**
  * Parse a license key string: "AISC-XXXX-XXXX-XXXX-XXXX"
- * Returns { email, expiry, signature } or null.
+ * Returns { email, expiry, signature, emailHex, expiryHex } or null.
  */
 function parseLicenseKey(key) {
   if (!key || typeof key !== 'string') return null;
-  const cleaned = key.replace(/\s+/g, '').replace(/-/g, '');  // remove dashes & spaces
+  const cleaned = key.replace(/\s+/g, '').replace(/-/g, '');
   if (!cleaned.startsWith('AISC')) return null;
-  // Format: AISC + 12 hex (signature) + 8 hex (expiry YYYYMMDD)
-  // Total after AISC: 20 hex chars
-  const payload = cleaned.substring(4); // after "AISC"
+  const payload = cleaned.substring(4);
   if (payload.length < 20) return null;
   const signature = payload.substring(0, 12);
   const expiryHex = payload.substring(12, 20);
-  // Remaining chars are email (hex-encoded)
   const emailHex = payload.substring(20);
   if (!emailHex || emailHex.length === 0) return null;
   try {
-    const email = emailHex.match(/.{1,2}/g).map(b => String.fromCharCode(parseInt(b, 16))).join('');
-    const expiry = parseInt(expiryHex, 16); // Unix timestamp in days (not seconds)
-    return { email, expiry, signature, emailHex, expiryHex };
-  } catch {
+    const email = emailHex.match(/.{1,2}/g).map(function(b) { return String.fromCharCode(parseInt(b, 16)); }).join('');
+    const expiry = parseInt(expiryHex, 16);
+    return { email: email, expiry: expiry, signature: signature, emailHex: emailHex, expiryHex: expiryHex };
+  } catch (e) {
     return null;
   }
 }
 
 /**
+ * Compute SHA-256 hex for signature verification.
+ * Uses crypto.subtle.digest (works in Service Worker without key import).
+ */
+async function sha256hex(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+/**
  * Validate a Pro license key.
- * Uses HMAC-SHA256. The signature covers email + expiry.
+ * Signature = first 12 chars of SHA-256(secret + ':' + email + ':' + expiryHex)
  */
 async function validateLicenseKey(licenseKey, email) {
   if (!licenseKey || !email) return { valid: false, reason: 'License key and email are required.' };
-  const parsed = parseLicenseKey(licenseKey);
+  var parsed = parseLicenseKey(licenseKey);
   if (!parsed) {
     return { valid: false, reason: 'Invalid license key format. Expected: AISC-XXXX-XXXX-XXXX-XXXX' };
   }
   if (parsed.email.toLowerCase() !== email.trim().toLowerCase()) {
     return { valid: false, reason: 'License key does not match this email address.' };
   }
-  // Check expiry (expiry is days since epoch for simplicity)
-  const nowDays = Math.floor(Date.now() / 86400000); // days since epoch
+  // Check expiry
+  var nowDays = Math.floor(Date.now() / 86400000);
   if (parsed.expiry < nowDays) {
-    const expiryDate = new Date(parsed.expiry * 86400000);
-    return { valid: false, reason: `License expired on ${expiryDate.toISOString().split('T')[0]}.` };
+    var expiryDate = new Date(parsed.expiry * 86400000);
+    return { valid: false, reason: 'License expired on ' + expiryDate.toISOString().split('T')[0] + '.' };
   }
-  // Verify signature
-  const message = new TextEncoder().encode(parsed.email.toLowerCase() + ':' + parsed.expiryHex);
-  const key = await crypto.subtle.importKey('raw', LICENSE_SECRET, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, message);
-  const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 12);
+  // Verify signature: SHA-256(secret + ':' + email + ':' + expiryHex)
+  var sigInput = LICENSE_SECRET + ':' + parsed.email.toLowerCase() + ':' + parsed.expiryHex;
+  var fullSig = await sha256hex(sigInput);
+  var sigHex = fullSig.substring(0, 12);
   if (sigHex !== parsed.signature) {
+    console.log('[wasap-bg] License sig mismatch — expected:', parsed.signature, 'got:', sigHex);
     return { valid: false, reason: 'License key signature is invalid.' };
   }
-  const expiryDate = new Date(parsed.expiry * 86400000);
-  return { valid: true, expiryDate: expiryDate.toISOString().split('T')[0], email: parsed.email };
+  var expDate = new Date(parsed.expiry * 86400000);
+  return { valid: true, expiryDate: expDate.toISOString().split('T')[0], email: parsed.email };
 }
 
 // ============================================================
