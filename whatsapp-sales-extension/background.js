@@ -111,34 +111,77 @@ async function validateLicenseKey(licenseKey, email) {
 
 // ============================================================
 // Daily Quota Tracking (Free tier: 25 AI operations/day)
+// Anti-tamper: uses monotonic timestamp to detect clock rollback.
 // ============================================================
 
+const FREE_LIMIT = 25;
+const MIN_RESET_INTERVAL_MS = 20 * 60 * 60 * 1000; // 20 hours minimum between resets
+
+/**
+ * Quota storage structure:
+ * {
+ *   date: "YYYY-MM-DD",       // calendar date of last reset
+ *   count: 0-25,              // operations used today
+ *   lastOpEpoch: 1717600000,  // Date.now() at last operation (monotonic guard)
+ *   tamperCount: 0,           // number of clock-rollback attempts detected
+ * }
+ */
+
 async function getDailyUsage() {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const result = await chrome.storage.local.get('dailyUsage');
   const usage = result.dailyUsage || {};
-  if (usage.date !== today) {
-    return { date: today, count: 0 };
-  }
-  return usage;
+  return usage; // returns raw stored state, caller decides validity
 }
 
 async function incrementDailyUsage() {
-  const today = new Date().toISOString().split('T')[0];
+  const now = Date.now();
+  const today = new Date(now).toISOString().split('T')[0];
   const usage = await getDailyUsage();
-  if (usage.date !== today) {
+
+  // Initialize if empty
+  if (!usage.date) {
     usage.date = today;
     usage.count = 1;
-  } else {
-    usage.count++;
+    usage.lastOpEpoch = now;
+    usage.tamperCount = 0;
+    await chrome.storage.local.set({ dailyUsage: usage });
+    return usage;
   }
+
+  // --- Tamper detection ---
+  // If clock went backwards relative to last operation, freeze quota
+  if (usage.lastOpEpoch && now < usage.lastOpEpoch) {
+    usage.tamperCount = (usage.tamperCount || 0) + 1;
+    await chrome.storage.local.set({ dailyUsage: usage });
+    return usage; // count unchanged — quota stays frozen
+  }
+
+  // --- Legitimate reset: date changed AND enough time has passed ---
+  if (usage.date !== today) {
+    const timeSinceLastOp = usage.lastOpEpoch ? now - usage.lastOpEpoch : Infinity;
+    if (timeSinceLastOp >= MIN_RESET_INTERVAL_MS) {
+      // Genuine new day — reset
+      usage.date = today;
+      usage.count = 1;
+    } else {
+      // Date changed but not enough real time passed → suspicious, freeze
+      usage.tamperCount = (usage.tamperCount || 0) + 1;
+      // Don't change count — quota stays as-is
+    }
+    usage.lastOpEpoch = now;
+    await chrome.storage.local.set({ dailyUsage: usage });
+    return usage;
+  }
+
+  // Same day — normal increment
+  usage.count++;
+  usage.lastOpEpoch = now;
   await chrome.storage.local.set({ dailyUsage: usage });
   return usage;
 }
 
 async function isPro(config) {
   if (!config || !config.licenseKey || !config.licenseEmail) return false;
-  // Validate and cache result
   const result = await validateLicenseKey(config.licenseKey, config.licenseEmail);
   return result.valid;
 }
@@ -148,17 +191,56 @@ async function checkQuota(config) {
   if (pro) return { allowed: true, pro: true, remaining: Infinity };
 
   const usage = await getDailyUsage();
-  const FREE_LIMIT = 25;
-  if (usage.count >= FREE_LIMIT) {
+  const now = Date.now();
+
+  // Detect tampered state
+  if (usage.tamperCount > 0) {
+    // If tampered too many times, lock permanently
+    if (usage.tamperCount >= 3) {
+      return {
+        allowed: false,
+        pro: false,
+        remaining: 0,
+        limit: FREE_LIMIT,
+        tampered: true,
+        message: 'Quota system integrity check failed. Upgrade to Pro to restore access.'
+      };
+    }
+  }
+
+  // If clock went backwards, freeze
+  if (usage.lastOpEpoch && now < usage.lastOpEpoch) {
     return {
       allowed: false,
       pro: false,
       remaining: 0,
       limit: FREE_LIMIT,
-      message: `Daily free limit (${FREE_LIMIT} messages) reached. Upgrade to Pro for unlimited access.`
+      tamperSuspected: true,
+      message: 'System clock appears to have been changed. AI operations temporarily disabled. Upgrade to Pro for uninterrupted access.'
     };
   }
-  return { allowed: true, pro: false, remaining: FREE_LIMIT - usage.count - 1, limit: FREE_LIMIT };
+
+  const count = usage.count || 0;
+  if (count >= FREE_LIMIT) {
+    return {
+      allowed: false,
+      pro: false,
+      remaining: 0,
+      limit: FREE_LIMIT,
+      message: `Daily free limit (${FREE_LIMIT} messages) reached. Resets in approximately ${getTimeUntilReset(usage)}. Upgrade to Pro for unlimited access.`
+    };
+  }
+  return { allowed: true, pro: false, remaining: FREE_LIMIT - count, limit: FREE_LIMIT };
+}
+
+function getTimeUntilReset(usage) {
+  if (!usage.lastOpEpoch) return '24 hours';
+  const resetAt = usage.lastOpEpoch + MIN_RESET_INTERVAL_MS;
+  const remaining = resetAt - Date.now();
+  if (remaining <= 0) return 'soon';
+  const hours = Math.floor(remaining / 3600000);
+  const mins = Math.floor((remaining % 3600000) / 60000);
+  return `${hours}h ${mins}m`;
 }
 
 // ============================================================
@@ -826,15 +908,16 @@ async function handleSidepanelCommand(msg) {
   switch (action) {
     case 'get_config': {
       const config = await Storage.getConfig();
-      const usage = await getDailyUsage();
       const pro = await isPro(config);
+      const quota = await checkQuota(config);
       console.log('[wasap-bg] get_config: API key configured:', !!config.llm.apiKey, 'Pro:', pro);
       sidepanelPort?.postMessage({ type: 'config', data: {
         ...config,
         llm: { ...config.llm, apiKey: config.llm.apiKey ? '***' : '' },
         isPro: pro,
-        dailyUsage: usage,
-        freeLimit: 25,
+        dailyUsage: await getDailyUsage(),
+        quota: quota,
+        freeLimit: FREE_LIMIT,
       }});
       break;
     }
@@ -938,8 +1021,8 @@ async function handleSidepanelCommand(msg) {
         await saveMessage(sentMsg);
         broadcastToSidepanel('message_sent', sentMsg);
         // Broadcast updated quota
-        const newUsage = await getDailyUsage();
-        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
+        const updatedQuota = await checkQuota(config);
+        broadcastToSidepanel('quota_info', updatedQuota);
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'send_error', data: { message: 'Translation failed: ' + e.message } });
       }
@@ -965,8 +1048,8 @@ async function handleSidepanelCommand(msg) {
         await Storage.setTranslation(messageId, translation);
         sidepanelPort?.postMessage({ type: 'translation_ready', data: { messageId, translation } });
         // Broadcast updated quota
-        const newUsage = await getDailyUsage();
-        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
+        const updatedQuota = await checkQuota(config);
+        broadcastToSidepanel('quota_info', updatedQuota);
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'translate_error', data: { messageId, error: e.message } });
       }
@@ -996,8 +1079,8 @@ async function handleSidepanelCommand(msg) {
         await Storage.setSuggestions(messageId, suggestions);
         sidepanelPort?.postMessage({ type: 'suggestions_ready', data: { messageId, suggestions } });
         // Broadcast updated quota
-        const newUsage = await getDailyUsage();
-        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
+        const updatedQuota = await checkQuota(config);
+        broadcastToSidepanel('quota_info', updatedQuota);
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'suggestions_error', data: { messageId, error: e.message } });
       }
@@ -1024,8 +1107,8 @@ async function handleSidepanelCommand(msg) {
         await incrementDailyUsage();
         sidepanelPort?.postMessage({ type: 'custom_reply_ready', data: result });
         // Broadcast updated quota
-        const newUsage = await getDailyUsage();
-        broadcastToSidepanel('quota_info', { ...quota, remaining: Math.max(0, quota.remaining - 1) });
+        const updatedQuota = await checkQuota(config);
+        broadcastToSidepanel('quota_info', updatedQuota);
       } catch (e) {
         sidepanelPort?.postMessage({ type: 'custom_reply_error', data: { error: e.message } });
       }

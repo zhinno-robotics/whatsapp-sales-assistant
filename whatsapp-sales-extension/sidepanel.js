@@ -136,6 +136,13 @@ function handleBgMessage(msg) {
       if (data.userNativeLang === 'zh') {
         document.getElementById('replyInput').placeholder = '输入回复... (Enter 发送，Shift+Enter 换行)';
       }
+      if (data.isPro !== undefined && data.quota) {
+        updateQuotaBanner(data.quota);
+      } else if (data.isPro !== undefined) {
+        updateQuotaBanner({ allowed: true, pro: data.isPro, remaining: 25 });
+      } else if (bgPort) {
+        bgPort.postMessage({ action: 'get_quota', params: {} });
+      }
       break;
 
     case 'whatsapp_ready':
@@ -216,6 +223,16 @@ function handleBgMessage(msg) {
 
     case 'error':
       console.error('[sidepanel] Error:', data.message);
+      break;
+
+    case 'quota_info':
+      updateQuotaBanner(data);
+      break;
+
+    case 'license_result':
+      if (data.valid) {
+        updateQuotaBanner({ allowed: true, pro: true, remaining: 1e99 });
+      }
       break;
 
     case 'store_timeout':
@@ -962,37 +979,60 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 
 function updateQuotaBanner(data) {
-  const upgradeBanner = document.getElementById('upgradeBanner');
-  const proBanner = document.getElementById('proBanner');
-  const quotaSpan = document.getElementById('quotaRemaining');
+  var upgradeBanner = document.getElementById('upgradeBanner');
+  var proBanner = document.getElementById('proBanner');
+  var quotaSpan = document.getElementById('quotaRemaining');
 
   if (!upgradeBanner || !proBanner) return;
 
   if (data.pro) {
     upgradeBanner.style.display = 'none';
     proBanner.style.display = 'block';
-  } else {
-    proBanner.style.display = 'none';
-    upgradeBanner.style.display = 'block';
-    if (quotaSpan) quotaSpan.textContent = data.remaining >= 0 ? data.remaining : 0;
+    return;
+  }
 
-    // Warn when low
-    if (data.remaining <= 5) {
-      upgradeBanner.style.background = 'linear-gradient(135deg,#8b0000,#ff4444)';
-    } else if (data.remaining <= 10) {
-      upgradeBanner.style.background = 'linear-gradient(135deg,#8b4513,#ff8c00)';
-    } else {
-      upgradeBanner.style.background = 'linear-gradient(135deg,#005c4b,#00a884)';
-    }
+  proBanner.style.display = 'none';
+
+  if (data.tampered) {
+    upgradeBanner.style.display = 'block';
+    upgradeBanner.style.background = 'linear-gradient(135deg,#8b0000,#cc0000)';
+    upgradeBanner.innerHTML = '⚠️ Quota integrity check failed. <strong>Upgrade to Pro to restore access →</strong>';
+    if (quotaSpan) quotaSpan.textContent = '0';
+    return;
+  }
+
+  if (data.tamperSuspected) {
+    upgradeBanner.style.display = 'block';
+    upgradeBanner.style.background = 'linear-gradient(135deg,#8b4513,#ff8c00)';
+    upgradeBanner.innerHTML = '⚠️ Clock change detected. AI paused. <strong>Upgrade to Pro →</strong>';
+    if (quotaSpan) quotaSpan.textContent = '0';
+    return;
+  }
+
+  upgradeBanner.style.display = 'block';
+  if (quotaSpan) quotaSpan.textContent = data.remaining >= 0 ? data.remaining : 0;
+
+  if (data.remaining <= 0) {
+    upgradeBanner.style.background = 'linear-gradient(135deg,#8b0000,#ff4444)';
+    upgradeBanner.innerHTML = '🔒 Free limit reached. <strong>Upgrade to Pro for $9.90/mo →</strong>';
+  } else if (data.remaining <= 5) {
+    upgradeBanner.style.background = 'linear-gradient(135deg,#8b0000,#ff4444)';
+    upgradeBanner.innerHTML = '⚠️ Free: <span id="quotaRemaining">' + data.remaining + '</span>/25 AI ops remaining. <strong>Upgrade to Pro →</strong>';
+  } else if (data.remaining <= 10) {
+    upgradeBanner.style.background = 'linear-gradient(135deg,#8b4513,#ff8c00)';
+    upgradeBanner.innerHTML = 'Free: <span id="quotaRemaining">' + data.remaining + '</span>/25 AI ops remaining. <strong>Upgrade to Pro →</strong>';
+  } else {
+    upgradeBanner.style.background = 'linear-gradient(135deg,#005c4b,#00a884)';
+    upgradeBanner.innerHTML = 'Free: <span id="quotaRemaining">' + data.remaining + '</span>/25 AI ops remaining. <strong>Upgrade to Pro for $9.90/mo →</strong>';
   }
 }
 
 // Click banner to open settings popup
-document.addEventListener('DOMContentLoaded', function() {
-  const banner = document.getElementById('upgradeBanner');
+(function() {
+  var banner = document.getElementById('upgradeBanner');
   if (banner) {
     banner.addEventListener('click', function() {
       chrome.runtime.sendMessage({ source: 'popup', action: 'open_popup' });
     });
   }
-});
+})();
