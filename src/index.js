@@ -316,6 +316,70 @@ app.post('/api/transcribe', async (req, res) => {
 });
 
 // ============================================================
+// License Key Generation API (Pro sales)
+// POST /api/generate-key  { email, days, adminSecret }
+// ============================================================
+
+const { generateLicenseKey } = require('./license');
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin-secret-change-me';
+
+app.post('/api/generate-key', (req, res) => {
+  const { email, days, adminSecret } = req.body;
+
+  // Auth check
+  if (!adminSecret || adminSecret !== ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Invalid admin secret.' });
+  }
+
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Valid email is required.' });
+  }
+
+  const validityDays = parseInt(days, 10) || 30;
+  if (validityDays < 1 || validityDays > 3650) {
+    return res.status(400).json({ error: 'Days must be between 1 and 3650.' });
+  }
+
+  try {
+    const license = generateLicenseKey(email, validityDays);
+    console.log(chalk.green(`  License generated: ${license.email} expiring ${license.expiryDate}`));
+    res.json({
+      success: true,
+      licenseKey: license.key,
+      email: license.email,
+      expiryDate: license.expiryDate,
+      days: validityDays,
+      instructions: 'Enter this key in the extension popup under the Pro tab, along with the email address above.',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch generation for bulk orders
+app.post('/api/generate-keys-batch', (req, res) => {
+  const { orders, adminSecret } = req.body;
+
+  if (!adminSecret || adminSecret !== ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Invalid admin secret.' });
+  }
+
+  if (!Array.isArray(orders) || orders.length === 0 || orders.length > 100) {
+    return res.status(400).json({ error: 'orders must be an array of {email, days}, max 100.' });
+  }
+
+  try {
+    const results = orders.map(({ email, days }) => {
+      const license = generateLicenseKey(email, days || 30);
+      return { email: license.email, licenseKey: license.key, expiryDate: license.expiryDate };
+    });
+    res.json({ success: true, licenses: results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 // WhatsApp Message Handler
 // ============================================================
 

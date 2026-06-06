@@ -1032,7 +1032,7 @@ function updateQuotaBanner(data) {
   var banner = document.getElementById('upgradeBanner');
   if (banner) {
     banner.addEventListener('click', function() {
-      chrome.runtime.sendMessage({ source: 'popup', action: 'open_popup' });
+      chrome.tabs.create({ url: 'https://zhinno-robotics.github.io/whatsapp-sales-assistant/#pricing' });
     });
   }
 })();

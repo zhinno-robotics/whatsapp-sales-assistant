@@ -1,15 +1,53 @@
 /**
- * Simple license validation for commercialization
- * License key = HMAC of the WhatsApp phone number
+ * License key generation & validation
+ * Matches the extension's format: AISC-{sig12}{expiry8}{emailHex}
+ * Uses HMAC-SHA256. Same SECRET as the extension for cross-validation.
  */
+
 const crypto = require('crypto');
 
-const SECRET = 'wasap-ai-sales-2026'; // Change this for production
+// Must match LICENSE_SECRET in extension's background.js
+const SECRET = process.env.LICENSE_SECRET || 'aisc-pro-secret-2026';
 
 /**
- * Generate a license key for a given phone number
+ * Generate a Pro license key for a given email and duration.
+ * @param {string} email - customer email
+ * @param {number} daysFromNow - validity in days (e.g. 30, 365)
+ * @returns {{ key: string, expiryDate: string, email: string }}
  */
-function generateKey(phoneNumber) {
+function generateLicenseKey(email, daysFromNow = 30) {
+  if (!email || daysFromNow <= 0) {
+    throw new Error('Email and positive daysFromNow are required.');
+  }
+
+  const emailLower = email.trim().toLowerCase();
+  const nowDays = Math.floor(Date.now() / 86400000);
+  const expiryDays = nowDays + parseInt(daysFromNow, 10);
+  const expiryHex = expiryDays.toString(16).padStart(8, '0');
+  const emailHex = Buffer.from(emailLower).toString('hex');
+
+  // Signature: HMAC-SHA256(email:expiryHex) first 12 hex chars
+  const message = emailLower + ':' + expiryHex;
+  const sig = crypto.createHmac('sha256', SECRET).update(message).digest('hex').substring(0, 12);
+
+  // Build key
+  const raw = 'AISC' + sig + expiryHex + emailHex;
+  const key = raw.match(/.{1,4}/g).join('-');
+
+  const expiryDate = new Date(expiryDays * 86400000);
+
+  return {
+    key,
+    email: emailLower,
+    expiryDate: expiryDate.toISOString().split('T')[0],
+    expiryDays,
+  };
+}
+
+/**
+ * Legacy: validate license key against phone number (for old Node.js server users).
+ */
+function generateLegacyKey(phoneNumber) {
   return crypto
     .createHmac('sha256', SECRET)
     .update(phoneNumber.trim())
@@ -18,12 +56,9 @@ function generateKey(phoneNumber) {
     .toUpperCase();
 }
 
-/**
- * Validate license key against phone number
- */
-function validateLicense(phoneNumber, licenseKey) {
-  const expected = generateKey(phoneNumber);
+function validateLegacyLicense(phoneNumber, licenseKey) {
+  const expected = generateLegacyKey(phoneNumber);
   return expected === licenseKey.toUpperCase();
 }
 
-module.exports = { generateKey, validateLicense };
+module.exports = { generateLicenseKey, generateLegacyKey, validateLegacyLicense };

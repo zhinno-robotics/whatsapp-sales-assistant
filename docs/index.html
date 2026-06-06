@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Sales Copilot — Smart AI Replies for WhatsApp Web</title>
+<meta name="description" content="AI-powered Chrome extension for WhatsApp Web. Real-time translation, smart reply suggestions, and B2B sales copywriting. Free tier available.">
+<style>
+:root {
+  --bg: #0b141a; --card: #111b21; --border: #2a3942;
+  --text: #e9edef; --muted: #8696a0;
+  --accent: #00a884; --accent-light: #00c49a;
+  --danger: #ff6b6b; --warn: #ffa726;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+/* Hero */
+.hero {
+  text-align: center; padding: 80px 0 60px;
+  background: linear-gradient(180deg, #005c4b22 0%, transparent 100%);
+}
+.hero h1 { font-size: 42px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; }
+.hero h1 span { color: var(--accent); }
+.hero p { font-size: 18px; color: var(--muted); max-width: 600px; margin: 0 auto 32px; }
+.hero .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-block; padding: 14px 32px; border-radius: 10px;
+  font-weight: 700; font-size: 15px; text-decoration: none; cursor: pointer;
+  border: none; transition: all .15s;
+}
+.btn-primary { background: var(--accent); color: #111b21; }
+.btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+.btn-outline:hover { background: rgba(0,168,132,.08); }
+.btn-large { padding: 18px 40px; font-size: 17px; }
+
+/* Features */
+.features { padding: 60px 0; }
+.features h2 { text-align: center; font-size: 28px; margin-bottom: 40px; }
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+.feature-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 28px; transition: border-color .15s;
+}
+.feature-card:hover { border-color: var(--accent); }
+.feature-card .icon { font-size: 32px; margin-bottom: 12px; }
+.feature-card h3 { font-size: 16px; margin-bottom: 8px; }
+.feature-card p { color: var(--muted); font-size: 14px; }
+
+/* Pricing */
+.pricing { padding: 60px 0 80px; }
+.pricing h2 { text-align: center; font-size: 28px; margin-bottom: 12px; }
+.pricing .subtitle { text-align: center; color: var(--muted); margin-bottom: 40px; }
+.price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; max-width: 760px; margin: 0 auto; }
+.price-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 36px 28px; position: relative;
+  transition: border-color .15s, transform .15s;
+}
+.price-card:hover { transform: translateY(-2px); }
+.price-card.pro { border-color: var(--accent); background: linear-gradient(180deg, #00a88410 0%, var(--card) 30%); }
+.price-card .badge {
+  position: absolute; top: -12px; right: 24px;
+  background: var(--accent); color: #111b21; font-size: 11px;
+  font-weight: 700; padding: 4px 12px; border-radius: 999px;
+}
+.price-card h3 { font-size: 20px; margin-bottom: 8px; }
+.price-card .price { font-size: 42px; font-weight: 800; margin-bottom: 4px; }
+.price-card .price .unit { font-size: 18px; font-weight: 500; color: var(--muted); }
+.price-card .period { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+.price-card .original { text-decoration: line-through; color: var(--muted); font-size: 18px; margin-right: 8px; }
+.price-card .promo { color: var(--warn); font-size: 13px; font-weight: 600; }
+.price-card ul { list-style: none; margin-bottom: 28px; }
+.price-card ul li { padding: 6px 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.price-card ul li .check { color: var(--accent); font-weight: 700; }
+.price-card ul li .cross { color: var(--danger); }
+.price-card .btn { width: 100%; text-align: center; }
+
+/* How it works */
+.steps { padding: 0 0 80px; }
+.steps h2 { text-align: center; font-size: 28px; margin-bottom: 40px; }
+.step-list { max-width: 600px; margin: 0 auto; }
+.step { display: flex; gap: 16px; margin-bottom: 32px; }
+.step .num {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--accent);
+  color: #111b21; font-weight: 800; font-size: 18px; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+.step h4 { margin-bottom: 4px; }
+.step p { color: var(--muted); font-size: 14px; }
+
+/* FAQ */
+.faq { padding: 0 0 80px; max-width: 700px; margin: 0 auto; }
+.faq h2 { text-align: center; font-size: 28px; margin-bottom: 40px; }
+.faq-item { border-bottom: 1px solid var(--border); padding: 20px 0; }
+.faq-item h4 { font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.faq-item p { color: var(--muted); font-size: 14px; margin-top: 8px; display: none; }
+.faq-item.open p { display: block; }
+
+/* Footer */
+.footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+.footer a { color: var(--accent); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+/* Checkout modal */
+.overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  z-index: 1000; justify-content: center; align-items: center;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 32px; width: 100%; max-width: 440px; margin: 16px;
+}
+.modal h3 { margin-bottom: 16px; }
+.modal input {
+  width: 100%; padding: 12px; background: #202c33; border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 12px;
+  font-family: inherit;
+}
+.modal .note { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.modal .actions { display: flex; gap: 8px; }
+.modal .actions .btn { flex: 1; text-align: center; }
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 28px; }
+  .hero { padding: 40px 0; }
+  .price-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <h1>Supercharge Your <span>WhatsApp Sales</span> with AI</h1>
+    <p>Real-time translation, smart reply suggestions, and professional copywriting — right inside WhatsApp Web.</p>
+    <div class="cta-row">
+      <a href="#pricing" class="btn btn-primary btn-large">Get Pro — $9.90/mo</a>
+      <a href="https://chrome.google.com/webstore" class="btn btn-outline">Add to Chrome — Free</a>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="container">
+    <h2>Everything You Need to Close Deals Faster</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="icon">🌐</div>
+        <h3>Real-time Translation</h3>
+        <p>Instantly translate customer messages between 16+ languages. Understand every inquiry without leaving WhatsApp.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">💬</div>
+        <h3>AI Reply Suggestions</h3>
+        <p>5 professional reply options in different tones: Professional, Friendly, Closing, Detailed, and Concise.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">✍️</div>
+        <h3>Custom AI Replies</h3>
+        <p>Describe what you want to say in your language. AI crafts a polished, natural-sounding response instantly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔒</div>
+        <h3>Bring Your Own API Key</h3>
+        <p>Use DeepSeek, OpenAI, or any compatible API. Your data never passes through our servers.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">⚡</div>
+        <h3>Side Panel UI</h3>
+        <p>Non-intrusive Chrome side panel. Chat list, message history, and AI tools — always accessible.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🎤</div>
+        <h3>Voice Transcription</h3>
+        <p>Convert WhatsApp voice messages to text. Never miss important voice notes from clients. (Pro)</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <h2>Simple, Transparent Pricing</h2>
+    <p class="subtitle">Launch special. Prices will increase after the beta period.</p>
+    <div class="price-grid">
+      <!-- Free -->
+      <div class="price-card">
+        <h3>Free</h3>
+        <div class="price">$0<span class="unit"></span></div>
+        <div class="period">Forever free</div>
+        <ul>
+          <li><span class="check">✓</span> 25 AI operations / day</li>
+          <li><span class="check">✓</span> Real-time translation</li>
+          <li><span class="check">✓</span> 5 reply suggestions</li>
+          <li><span class="check">✓</span> Custom AI replies</li>
+          <li><span class="check">✓</span> 16+ languages</li>
+          <li><span class="cross">✗</span> Voice transcription</li>
+          <li><span class="cross">✗</span> Unlimited AI operations</li>
+          <li><span class="cross">✗</span> Priority support</li>
+        </ul>
+        <a href="https://chrome.google.com/webstore" class="btn btn-outline">Add to Chrome</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="price-card pro">
+        <div class="badge">LAUNCH SALE</div>
+        <h3>Pro</h3>
+        <div class="price"><span class="original">$19.90</span>$9.90<span class="unit">/mo</span></div>
+        <div class="period"><span class="promo">50% off — limited time</span></div>
+        <ul>
+          <li><span class="check">✓</span> <strong>Unlimited</strong> AI operations</li>
+          <li><span class="check">✓</span> Real-time translation</li>
+          <li><span class="check">✓</span> 5 reply suggestions</li>
+          <li><span class="check">✓</span> Custom AI replies</li>
+          <li><span class="check">✓</span> 16+ languages</li>
+          <li><span class="check">✓</span> Voice transcription (soon)</li>
+          <li><span class="check">✓</span> Priority email support</li>
+          <li><span class="check">✓</span> Future Pro features</li>
+        </ul>
+        <button class="btn btn-primary" onclick="openCheckout()">Buy Pro — $9.90/mo</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="steps">
+  <div class="container">
+    <h2>How It Works</h2>
+    <div class="step-list">
+      <div class="step">
+        <div class="num">1</div>
+        <div>
+          <h4>Add to Chrome</h4>
+          <p>Install the free extension from the Chrome Web Store. Open WhatsApp Web and the side panel appears.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div>
+          <h4>Configure Your AI Key</h4>
+          <p>Enter your DeepSeek or OpenAI API key in the extension popup. Your data stays private — AI calls go directly to your provider.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div>
+          <h4>Upgrade to Pro</h4>
+          <p>Hit your free daily limit? Upgrade to Pro for unlimited access. You'll receive a license key instantly.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div>
+          <h4>Activate & Sell More</h4>
+          <p>Enter your license key in the extension. Unlimited AI operations. Focus on closing deals, not typing replies.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq container">
+  <h2>Frequently Asked Questions</h2>
+  <div class="faq-item open">
+    <h4 onclick="toggleFAQ(this)">Do I need my own API key? <span>▾</span></h4>
+    <p>Yes. You bring your own DeepSeek or OpenAI API key. This keeps your data private and your costs under your control. DeepSeek is ~$0.14 per million tokens — very affordable.</p>
+  </div>
+  <div class="faq-item">
+    <h4 onclick="toggleFAQ(this)">How is the license key delivered? <span>▸</span></h4>
+    <p>After purchase, you'll receive a license key by email within a few minutes. Enter it in the extension popup under the "Pro" tab along with your email address to activate unlimited access.</p>
+  </div>
+  <div class="faq-item">
+    <h4 onclick="toggleFAQ(this)">What payment methods are accepted? <span>▸</span></h4>
+    <p>We accept credit/debit cards and major digital wallets. All payments are processed securely.</p>
+  </div>
+  <div class="faq-item">
+    <h4 onclick="toggleFAQ(this)">Can I cancel anytime? <span>▸</span></h4>
+    <p>Yes. Pro is a monthly subscription. Cancel anytime and your license remains active until the end of the billing period. No long-term contracts.</p>
+  </div>
+  <div class="faq-item">
+    <h4 onclick="toggleFAQ(this)">Is my data secure? <span>▸</span></h4>
+    <p>Absolutely. AI requests go directly from your browser to your configured AI provider (DeepSeek, OpenAI, etc.). We never see your messages, API keys, or chat data. Everything is stored locally in Chrome.</p>
+  </div>
+  <div class="faq-item">
+    <h4 onclick="toggleFAQ(this)">How does the 25/day free limit work? <span>▸</span></h4>
+    <p>Free users get 25 AI operations per day (translations + suggestions + custom replies). The counter resets daily. Pro users have no limits.</p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <p>AI Sales Copilot &copy; 2026. Built for B2B sales professionals.</p>
+    <p><a href="whatsapp-sales-extension/privacy.html">Privacy Policy</a> &middot; <a href="mailto:support@zhinno-robotics.com">Contact</a></p>
+  </div>
+</footer>
+
+<!-- Checkout Modal -->
+<div class="overlay" id="checkoutOverlay">
+  <div class="modal">
+    <h3>💎 Upgrade to Pro</h3>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:16px;">
+      Launch price: <strong style="color:var(--accent);">$9.90/month</strong> (50% off regular $19.90)
+    </p>
+
+    <!-- Step 1: Email input -->
+    <div id="checkoutStep1">
+      <label style="font-size:13px;color:var(--muted);">Your email address</label>
+      <input type="email" id="checkoutEmail" placeholder="you@example.com" autocomplete="email">
+      <p class="note">Your license key will be tied to this email.</p>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="closeCheckout()" style="background:transparent;">Cancel</button>
+        <button class="btn btn-primary" onclick="checkoutNext()">Continue to Payment →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Payment -->
+    <div id="checkoutStep2" style="display:none;">
+      <p class="note">
+        Complete payment to receive your license key.<br>
+        After payment, your license key will appear here and be sent to <strong id="checkoutEmailDisplay"></strong>.
+      </p>
+      <div style="text-align:center;padding:20px 0;">
+        <span style="color:var(--warn);font-size:14px;">⚡ Payment gateway coming soon</span>
+        <p style="color:var(--muted);font-size:13px;margin-top:8px;">
+          In the meantime, email <strong>sales@zhinno-robotics.com</strong> with your desired email address to purchase manually. We'll send your license key within 24 hours.
+        </p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="checkoutBack()">← Back</button>
+        <a class="btn btn-primary" href="mailto:sales@zhinno-robotics.com?subject=AI%20Sales%20Copilot%20Pro%20Purchase&body=Hi%2C%20I'd%20like%20to%20purchase%20the%20Pro%20license.%20My%20email%3A%20" id="emailPurchaseLink">Email to Purchase</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openCheckout() {
+  document.getElementById('checkoutOverlay').classList.add('show');
+  document.getElementById('checkoutStep1').style.display = 'block';
+  document.getElementById('checkoutStep2').style.display = 'none';
+}
+
+function closeCheckout() {
+  document.getElementById('checkoutOverlay').classList.remove('show');
+}
+
+function checkoutNext() {
+  var email = document.getElementById('checkoutEmail').value.trim();
+  if (!email) { alert('Please enter your email address.'); return; }
+  document.getElementById('checkoutEmailDisplay').textContent = email;
+  document.getElementById('emailPurchaseLink').href = 'mailto:sales@zhinno-robotics.com?subject=AI%20Sales%20Copilot%20Pro%20Purchase&body=Hi%2C%20I%27d%20like%20to%20purchase%20the%20Pro%20license.%0A%0AMy%20email%3A%20' + encodeURIComponent(email);
+  document.getElementById('checkoutStep1').style.display = 'none';
+  document.getElementById('checkoutStep2').style.display = 'block';
+}
+
+function checkoutBack() {
+  document.getElementById('checkoutStep1').style.display = 'block';
+  document.getElementById('checkoutStep2').style.display = 'none';
+}
+
+function toggleFAQ(el) {
+  var item = el.parentElement;
+  item.classList.toggle('open');
+  var span = el.querySelector('span');
+  span.textContent = item.classList.contains('open') ? '▾' : '▸';
+}
+
+// Close overlay on background click
+document.getElementById('checkoutOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeCheckout();
+});
+</script>
+
+</body>
+</html>
