@@ -11,10 +11,7 @@
     "windows"
   ],
   "host_permissions": [
-    "https://web.whatsapp.com/*",
-    "https://api.deepseek.com/*",
-    "https://openrouter.ai/*",
-    "https://api.openai.com/*"
+    "https://web.whatsapp.com/*"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"
