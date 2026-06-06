@@ -141,7 +141,7 @@ async function activateLicense() {
       action: 'validate_license',
       params: { licenseKey: licenseKey, email: email },
     });
-    console.log('[popup] BG response:', bgResponse);
+    console.log('[popup] BG response:', JSON.stringify(bgResponse));
     if (bgResponse && bgResponse.valid) {
       valid = true;
     } else {

@@ -90,26 +90,31 @@ async function sha256hex(text) {
  * Signature = first 12 chars of SHA-256(secret + ':' + email + ':' + expiryHex)
  */
 async function validateLicenseKey(licenseKey, email) {
+  console.log('[wasap-bg] validateLicenseKey start');
   if (!licenseKey || !email) return { valid: false, reason: 'License key and email are required.' };
   var parsed = parseLicenseKey(licenseKey);
+  console.log('[wasap-bg] parsed:', parsed ? ('email=' + parsed.email + ' expiry=' + parsed.expiry + ' sig=' + parsed.signature + ' expiryHex=' + parsed.expiryHex) : 'null');
   if (!parsed) {
     return { valid: false, reason: 'Invalid license key format. Expected: AISC-XXXX-XXXX-XXXX-XXXX' };
   }
   if (parsed.email.toLowerCase() !== email.trim().toLowerCase()) {
+    console.log('[wasap-bg] email mismatch: key has', parsed.email.toLowerCase(), 'input has', email.trim().toLowerCase());
     return { valid: false, reason: 'License key does not match this email address.' };
   }
   // Check expiry
   var nowDays = Math.floor(Date.now() / 86400000);
+  console.log('[wasap-bg] nowDays:', nowDays, 'expiryDays:', parsed.expiry);
   if (parsed.expiry < nowDays) {
     var expiryDate = new Date(parsed.expiry * 86400000);
     return { valid: false, reason: 'License expired on ' + expiryDate.toISOString().split('T')[0] + '.' };
   }
   // Verify signature: SHA-256(secret + ':' + email + ':' + expiryHex)
   var sigInput = LICENSE_SECRET + ':' + parsed.email.toLowerCase() + ':' + parsed.expiryHex;
+  console.log('[wasap-bg] sigInput:', sigInput);
   var fullSig = await sha256hex(sigInput);
   var sigHex = fullSig.substring(0, 12);
+  console.log('[wasap-bg] expected sig:', parsed.signature, 'computed sig:', sigHex, 'fullSig:', fullSig.substring(0, 20));
   if (sigHex !== parsed.signature) {
-    console.log('[wasap-bg] License sig mismatch — expected:', parsed.signature, 'got:', sigHex);
     return { valid: false, reason: 'License key signature is invalid.' };
   }
   var expDate = new Date(parsed.expiry * 86400000);
@@ -897,10 +902,14 @@ async function openWhatsAppChatTab(chatId, number = '', options = {}) {
 // ============================================================
 
 async function handlePopupMessage(action, params = {}) {
+  console.log('[wasap-bg] handlePopupMessage:', action);
   switch (action) {
     case 'validate_license': {
       const { licenseKey, email } = params;
-      return await validateLicenseKey(licenseKey, email);
+      console.log('[wasap-bg] validate_license called, email:', email, 'keyLen:', licenseKey ? licenseKey.length : 0);
+      const result = await validateLicenseKey(licenseKey, email);
+      console.log('[wasap-bg] validate_license result:', JSON.stringify(result));
+      return result;
     }
     default:
       return { valid: false, reason: 'Unknown action: ' + action };
