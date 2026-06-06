@@ -368,15 +368,9 @@ body {
 // Configuration — Fill in your payment details below
 // ============================================================
 
-// ---- PayPal Subscription Button (recommended) ----
-// 1. Go to https://www.paypal.com/buttons → Create "Subscribe" button
-// 2. Set price: $9.90/month, product: "AI Sales Copilot Pro"
-// 3. Copy the button's "business" ID or the full checkout link
-// 4. Replace below:
-var PAYPAL_BUSINESS_ID = 'jchen@zhzn-cn.com';
-var PAYPAL_ITEM_NAME = 'AI Sales Copilot Pro Monthly';
-var PAYPAL_PRICE = '9.90';
-var PAYPAL_CURRENCY = 'USD';
+// ---- PayPal Hosted Button (already created) ----
+// Button ID from paypal_9JR2P2HNF7E92.pdf
+var PAYPAL_HOSTED_BUTTON_ID = '9JR2P2HNF7E92';
 
 // ---- Contact ----
 var SUPPORT_EMAIL = 'jchen@zhzn-cn.com';
@@ -434,33 +428,11 @@ function processPayment() {
     return;
   }
 
-  // PayPal checkout
-  if (PAYPAL_BUSINESS_ID === 'YOUR_PAYPAL_BUSINESS_EMAIL') {
-    // PayPal not yet configured — fallback
-    var subject = encodeURIComponent('AI Sales Copilot Pro Purchase');
-    var body = encodeURIComponent(
-      'Hi, I would like to purchase the Pro Monthly license ($9.90/month).\n\n' +
-      'My email: ' + email + '\n\n' +
-      'Please send payment instructions. Thank you!'
-    );
-    window.open('mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body, '_blank');
-    closeCheckout();
-    return;
-  }
-
-  // Build PayPal subscription URL (Standard PayPal subscribe button)
+  // PayPal checkout — hosted button
   var paypalUrl = 'https://www.paypal.com/cgi-bin/webscr' +
-    '?cmd=_xclick-subscriptions' +
-    '&business=' + encodeURIComponent(PAYPAL_BUSINESS_ID) +
-    '&item_name=' + encodeURIComponent(PAYPAL_ITEM_NAME) +
-    '&a3=' + PAYPAL_PRICE +
-    '&p3=1' +
-    '&t3=M' +
-    '&currency_code=' + PAYPAL_CURRENCY +
-    '&no_note=1' +
-    '&no_shipping=1' +
-    '&custom=' + encodeURIComponent(email) +
-    '&return=' + encodeURIComponent(window.location.origin + window.location.pathname + '?purchased=1');
+    '?cmd=_s-xclick' +
+    '&hosted_button_id=' + PAYPAL_HOSTED_BUTTON_ID +
+    '&custom=' + encodeURIComponent(email);
 
   window.open(paypalUrl, '_blank');
   closeCheckout();
