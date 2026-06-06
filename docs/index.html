@@ -321,145 +321,160 @@ body {
 <!-- Checkout Modal -->
 <!-- ================================================================ -->
 <div class="overlay" id="checkoutOverlay">
-  <div class="checkout-modal">
+  <div class="checkout-modal" style="max-width:500px;">
     <h2>&#x1F48E; Upgrade to Pro</h2>
-    <p class="sub" id="checkoutSub">$9.90/month — Launch pricing (50% off)</p>
+    <p class="sub">$9.90/month — Launch pricing (50% off)</p>
 
     <div class="plan-summary">
       <div>
-        <div class="plan-name">Pro <span id="planLabel">Monthly</span></div>
+        <div class="plan-name">Pro Monthly</div>
         <div style="font-size:12px;color:var(--muted);">Unlimited AI operations</div>
       </div>
-      <div class="plan-price" id="planPrice">$9.90<span style="font-size:14px;font-weight:400;">/mo</span></div>
+      <div class="plan-price">$9.90<span style="font-size:14px;font-weight:400;">/mo</span></div>
     </div>
 
-    <div class="field">
-      <label>Your email (license key sent here)</label>
-      <input type="email" id="checkoutEmail" placeholder="you@example.com" autocomplete="email">
+    <!-- Step 1: Choose method -->
+    <div id="stepMethod">
+      <div class="payment-methods">
+        <h4>Select payment method</h4>
+        <div class="pm-grid">
+          <button class="pm-card recommended" onclick="showPaypal()">
+            PayPal / Card
+          </button>
+          <button class="pm-card" onclick="showWechat()">
+            WeChat / Alipay
+          </button>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:16px;">
+        <button class="btn btn-outline" onclick="closeCheckout()">Cancel</button>
+      </div>
     </div>
 
-    <div class="payment-methods">
-      <h4>Select payment method</h4>
-      <div class="pm-grid">
-        <button class="pm-card recommended" id="pmPaypal" onclick="selectPayment('paypal')">
-          PayPal / Card
-        </button>
-        <button class="pm-card" id="pmManual" onclick="selectPayment('manual')">
-          WeChat / Alipay
+    <!-- Step 2a: PayPal -->
+    <div id="stepPaypal" style="display:none;">
+      <div class="field">
+        <label>Your email (license key will be sent here)</label>
+        <input type="email" id="ppEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <p class="note" style="margin-bottom:16px;text-align:left;">
+        &#x1F4B3; Click below to pay via PayPal. You can use credit/debit card or your PayPal account.<br>
+        After payment, your license key will be emailed to you.
+      </p>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="backToMethods()">&#x2190; Back</button>
+        <a class="btn btn-primary" id="paypalLink" href="#" target="_blank" style="text-decoration:none;text-align:center;">
+          Pay $9.90 with PayPal &#x2192;
+        </a>
+      </div>
+    </div>
+
+    <!-- Step 2b: WeChat / Alipay -->
+    <div id="stepWechat" style="display:none;">
+      <div class="field">
+        <label>Your email (license key will be sent here)</label>
+        <input type="email" id="wxEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <p class="note" style="margin-bottom:12px;text-align:left;">
+        &#x1F4F1; Scan the QR code below to pay &yen;70 RMB (approx $9.90 USD).<br>
+        After payment, reply to the payment confirmation with your email,<br>or send your payment screenshot to <strong>jchen@zhzn-cn.com</strong>.
+      </p>
+      <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;">
+        <div style="color:var(--muted);font-size:36px;padding:24px;">
+          &#x1F4F7; [QR Code]<br>
+          <span style="font-size:13px;">Add your WeChat/Alipay QR here</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="backToMethods()">&#x2190; Back</button>
+        <button class="btn btn-primary" onclick="confirmWechat()">
+          I've Paid — Notify Me &#x2192;
         </button>
       </div>
     </div>
 
-    <div class="actions">
-      <button class="btn btn-outline" onclick="closeCheckout()">Cancel</button>
-      <button class="btn btn-primary" id="btnPay" onclick="processPayment()">
-        Pay $9.90 &rarr;
-      </button>
-    </div>
-    <p class="note" id="paymentNote">
-      &#x1F512; PayPal secured. License key sent to your email.<br>
-      Cancel anytime. 30-day money-back guarantee.
+    <p class="note" style="margin-top:12px;">
+      &#x1F6E1; 30-day money-back guarantee. Cancel anytime.
     </p>
   </div>
 </div>
 
 <script>
 // ============================================================
-// Configuration — Fill in your payment details below
+// Payment Configuration
 // ============================================================
 
-// ---- PayPal Hosted Button (already created) ----
-// Button ID from paypal_9JR2P2HNF7E92.pdf
-var PAYPAL_HOSTED_BUTTON_ID = '9JR2P2HNF7E92';
+// PayPal — set your PayPal.Me username (free at paypal.me)
+var PAYPAL_ME_USERNAME = 'jchenzhzn';  // → https://paypal.me/jchenzhzn/9.90
 
-// ---- Contact ----
+// Contact
 var SUPPORT_EMAIL = 'jchen@zhzn-cn.com';
-var WECHAT_QR = '';  // Optional: direct link to WeChat pay QR image
-var ALIPAY_QR = '';  // Optional: direct link to Alipay QR image
 
 // ============================================================
 // Payment Logic
 // ============================================================
 
-var selectedPayment = 'paypal';
-
-function openCheckout(plan) {
-  currentPlan = plan || 'monthly';
+function openCheckout() {
   document.getElementById('checkoutOverlay').classList.add('show');
-  selectPayment('paypal');
+  showPaypal();
 }
 
 function closeCheckout() {
   document.getElementById('checkoutOverlay').classList.remove('show');
 }
 
-function selectPayment(method) {
-  selectedPayment = method;
-  document.getElementById('pmPaypal').style.borderColor = method === 'paypal' ? 'var(--accent)' : 'var(--border)';
-  document.getElementById('pmManual').style.borderColor = method === 'manual' ? 'var(--accent)' : 'var(--border)';
-
-  var note = document.getElementById('paymentNote');
-  if (method === 'paypal') {
-    note.innerHTML = '&#x1F512; PayPal secured. License key sent to your email.<br>Cancel anytime. 30-day money-back guarantee.';
-  } else {
-    note.innerHTML = '&#x1F4F1; Scan QR or contact us directly.<br>License key delivered by email within 24 hours.';
-  }
+function backToMethods() {
+  document.getElementById('stepMethod').style.display = 'block';
+  document.getElementById('stepPaypal').style.display = 'none';
+  document.getElementById('stepWechat').style.display = 'none';
 }
 
-function processPayment() {
-  var email = document.getElementById('checkoutEmail').value.trim();
+function showPaypal() {
+  document.getElementById('stepMethod').style.display = 'none';
+  document.getElementById('stepPaypal').style.display = 'block';
+  document.getElementById('stepWechat').style.display = 'none';
+
+  // Build PayPal link with custom amount
+  var link = document.getElementById('paypalLink');
+  link.addEventListener('click', function(e) {
+    var email = document.getElementById('ppEmail').value.trim();
+    if (!email || email.indexOf('@') < 0) {
+      e.preventDefault();
+      alert('Please enter your email first.');
+      document.getElementById('ppEmail').focus();
+      return;
+    }
+    // PayPal.Me accepts notes via URL; use it to pass email
+    var url = 'https://paypal.me/' + PAYPAL_ME_USERNAME + '/9.90';
+    link.href = url;
+  });
+}
+
+function showWechat() {
+  document.getElementById('stepMethod').style.display = 'none';
+  document.getElementById('stepPaypal').style.display = 'none';
+  document.getElementById('stepWechat').style.display = 'block';
+}
+
+function confirmWechat() {
+  var email = document.getElementById('wxEmail').value.trim();
   if (!email || email.indexOf('@') < 0) {
-    alert('Please enter a valid email address for license key delivery.');
-    document.getElementById('checkoutEmail').focus();
+    alert('Please enter your email first.');
+    document.getElementById('wxEmail').focus();
     return;
   }
-
-  if (selectedPayment === 'manual') {
-    // WeChat/Alipay — show payment info and collect contact
-    var subject = encodeURIComponent('AI Sales Copilot Pro Purchase');
-    var body = encodeURIComponent(
-      'Hi, I would like to purchase AI Sales Copilot Pro Monthly.\n\n' +
-      'My email: ' + email + '\n' +
-      'Plan: Pro Monthly — $9.90/month\n\n' +
-      'Please send WeChat/Alipay payment details. Thank you!'
-    );
-    window.open('mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body, '_blank');
-    closeCheckout();
-    return;
-  }
-
-  // PayPal checkout — hosted subscription button
-  // Uses PayPal Standard subscribe button with hosted_button_id
-  var paypalUrl = 'https://www.paypal.com/cgi-bin/webscr' +
-    '?cmd=_xclick-subscriptions' +
-    '&hosted_button_id=' + PAYPAL_HOSTED_BUTTON_ID +
-    '&custom=' + encodeURIComponent(email);
-
-  window.open(paypalUrl, '_blank');
   closeCheckout();
-
-  setTimeout(function() {
-    alert(
-      'Payment page opened in new tab.\n\n' +
-      'After completing your payment:\n' +
-      '1. PayPal will redirect you back here\n' +
-      '2. Reply to the confirmation email with "activate"\n' +
-      '3. We will send your license key to ' + email + '\n\n' +
-      'Usually within a few minutes!'
-    );
-  }, 500);
+  alert(
+    'Thank you!\n\n' +
+    'Please send your payment screenshot to ' + SUPPORT_EMAIL + '\n' +
+    'We will send your license key to ' + email + ' as soon as the payment is confirmed.\n\n' +
+    'Usually within a few hours!'
+  );
 }
 
-// Show success message if returning from PayPal
-if (window.location.search.indexOf('purchased=1') >= 0) {
-  setTimeout(function() {
-    alert(
-      'Thank you for your purchase!\n\n' +
-      'Your license key is being generated and will be sent to your email shortly.\n\n' +
-      'If you don\'t receive it within 10 minutes, please check spam or contact ' + SUPPORT_EMAIL
-    );
-  }, 1000);
-}
+document.getElementById('checkoutOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeCheckout();
+});
 </script>
 
 </body>
