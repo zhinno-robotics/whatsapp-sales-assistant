@@ -1,7 +1,8 @@
 /**
  * License key generation & validation
- * Matches the extension's format: AISC-{sig12}{expiry8}{emailHex}
- * Uses HMAC-SHA256. Same SECRET as the extension for cross-validation.
+ * Key format: AISC-{sig12}{expiry8}{emailHex} (dashes every 4 chars)
+ * Signature: first 12 chars of SHA-256(secret + ':' + email + ':' + expiryHex)
+ * Must match extension's background.js validateLicenseKey.
  */
 
 const crypto = require('crypto');
@@ -26,11 +27,11 @@ function generateLicenseKey(email, daysFromNow = 30) {
   const expiryHex = expiryDays.toString(16).padStart(8, '0');
   const emailHex = Buffer.from(emailLower).toString('hex');
 
-  // Signature: HMAC-SHA256(email:expiryHex) first 12 hex chars
-  const message = emailLower + ':' + expiryHex;
-  const sig = crypto.createHmac('sha256', SECRET).update(message).digest('hex').substring(0, 12);
+  // Signature: first 12 chars of SHA-256(secret + ':' + email + ':' + expiryHex)
+  const sigInput = SECRET + ':' + emailLower + ':' + expiryHex;
+  const sig = crypto.createHash('sha256').update(sigInput).digest('hex').substring(0, 12);
 
-  // Build key
+  // Build key: AISC + sig(12) + expiry(8) + emailHex(rest)
   const raw = 'AISC' + sig + expiryHex + emailHex;
   const key = raw.match(/.{1,4}/g).join('-');
 
