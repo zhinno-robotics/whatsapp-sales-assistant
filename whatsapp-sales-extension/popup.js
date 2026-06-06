@@ -109,12 +109,12 @@ async function updateLicenseStatus() {
   if (config.licenseKey && config.licenseEmail) {
     statusEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">Pro Active</span> &mdash; ' + config.licenseEmail;
     statusEl.style.borderColor = 'var(--accent)';
-    if (quotaEl) quotaEl.textContent = 'Unlimited AI operations';
+    if (quotaEl) quotaEl.textContent = '(unlimited)';
     if (msgEl) { msgEl.textContent = ''; msgEl.style.color = 'var(--muted)'; }
   } else {
     statusEl.innerHTML = '<span style="color:var(--muted);">Free Tier</span> &mdash; 25 AI ops/day';
     statusEl.style.borderColor = 'var(--line)';
-    if (quotaEl) quotaEl.textContent = 'Used today: ' + todayCount + ' / 25';
+    if (quotaEl) quotaEl.textContent = '(' + todayCount + '/25 today)';
     if (msgEl) { msgEl.textContent = ''; msgEl.style.color = 'var(--muted)'; }
   }
 }

@@ -21,8 +21,8 @@
 
 body {
   width: 360px;
-  min-height: 420px;
-  max-height: 600px;
+  min-height: 380px;
+  max-height: 580px;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
@@ -32,261 +32,74 @@ body {
 .shell {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
-  height: 600px;
+  height: 580px;
   max-height: 100vh;
 }
 
-.header {
-  padding: 14px 14px 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-h1 {
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.badge {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 11px;
-  padding: 4px 8px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
-
+.header { padding: 10px 12px 8px; border-bottom: 1px solid var(--line); }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+h1 { color: var(--accent); font-size: 15px; font-weight: 700; line-height: 1.2; }
+.badge { flex: 0 0 auto; color: var(--muted); font-size: 10px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 999px; }
 .panel-btn {
-  width: 100%;
-  min-height: 38px;
-  margin-top: 12px;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-  background: var(--accent);
-  color: #111b21;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
+  width: 100%; min-height: 32px; margin-top: 8px; border: 0; border-radius: 7px;
+  cursor: pointer; background: var(--accent); color: #111b21;
+  font: inherit; font-size: 12px; font-weight: 700;
 }
-
 .panel-btn:hover { background: var(--accent-strong); }
 
 .tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 10px 14px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
+  padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--line);
 }
-
 .tab {
-  height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  cursor: pointer;
-  background: var(--panel);
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  height: 30px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer;
+  background: var(--panel); color: var(--muted); font: inherit; font-size: 11px; font-weight: 600;
 }
-
 .tab[aria-selected="true"] {
-  color: var(--text);
-  border-color: rgba(0, 168, 132, .65);
-  background: rgba(0, 168, 132, .14);
+  color: var(--text); border-color: rgba(0, 168, 132, .65); background: rgba(0, 168, 132, .14);
 }
 
-.content {
-  overflow-y: auto;
-  padding: 12px 14px 14px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
-}
-
+.content { overflow-y: auto; padding: 8px 12px 10px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .section { display: none; }
 .section.active { display: block; }
-
-.section-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+.section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+h2 { color: var(--text); font-size: 13px; line-height: 1.2; }
+.hint { color: var(--muted); font-size: 11px; line-height: 1.3; margin-top: 2px; }
+.field { margin-bottom: 7px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+input, select {
+  width: 100%; height: 32px; border: 1px solid var(--line); border-radius: 6px;
+  outline: none; background: var(--field); color: var(--text); padding: 5px 8px;
+  font: inherit; font-size: 12px;
 }
-
-h2 {
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.25;
-}
-
-.hint {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-  margin-top: 3px;
-}
-
-.field { margin-bottom: 10px; }
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-label {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 5px;
-}
-
-input,
-select {
-  width: 100%;
-  height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  outline: none;
-  background: var(--field);
-  color: var(--text);
-  padding: 7px 9px;
-  font: inherit;
-  font-size: 13px;
-}
-
-input:focus,
-select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(0, 168, 132, .16);
-}
-
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0, 168, 132, .16); }
 .switch-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 11px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel);
 }
-
-.switch-copy strong {
-  display: block;
-  font-size: 13px;
-  color: var(--text);
-  margin-bottom: 3px;
-}
-
-.switch-copy span {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.switch {
-  position: relative;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 24px;
-}
-
-.switch input {
-  position: absolute;
-  opacity: 0;
-  inset: 0;
-}
-
-.slider {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: #3a4952;
-  cursor: pointer;
-  transition: background .16s ease;
-}
-
-.slider::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform .16s ease;
-}
-
+.switch-copy strong { display: block; font-size: 12px; color: var(--text); margin-bottom: 2px; }
+.switch-copy span { display: block; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.switch { position: relative; flex: 0 0 auto; width: 38px; height: 22px; }
+.switch input { position: absolute; opacity: 0; inset: 0; }
+.slider { position: absolute; inset: 0; border-radius: 999px; background: #3a4952; cursor: pointer; transition: background .16s ease; }
+.slider::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .16s ease; }
 .switch input:checked + .slider { background: var(--accent); }
-.switch input:checked + .slider::after { transform: translateX(18px); }
+.switch input:checked + .slider::after { transform: translateX(16px); }
 
-.actions {
-  padding: 10px 14px 12px;
-  background: var(--bg);
-  border-top: 1px solid var(--line);
-}
-
-.action-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
+.actions { padding: 8px 12px 10px; background: var(--bg); border-top: 1px solid var(--line); }
+.action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .btn {
-  min-height: 36px;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
+  min-height: 32px; border: 0; border-radius: 7px; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 700;
 }
-
-.btn-primary {
-  background: var(--accent);
-  color: #111b21;
-}
-
+.btn-primary { background: var(--accent); color: #111b21; }
 .btn-primary:hover { background: var(--accent-strong); }
-
-.btn-secondary {
-  background: var(--field);
-  color: var(--text);
-  border: 1px solid var(--line);
-}
-
+.btn-secondary { background: var(--field); color: var(--text); border: 1px solid var(--line); }
 .btn-secondary:hover { background: #2a3942; }
+.btn:disabled { cursor: default; opacity: .6; }
 
-.btn:disabled {
-  cursor: default;
-  opacity: .6;
-}
-
-#status {
-  min-height: 20px;
-  margin-top: 8px;
-  padding: 0 2px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-  text-align: center;
-}
-
+#status { min-height: 18px; margin-top: 6px; padding: 0 2px; color: var(--muted); font-size: 11px; line-height: 1.3; text-align: center; }
 #status.success { color: var(--accent); }
 #status.error { color: var(--danger); }
 </style>
@@ -395,39 +208,27 @@ select:focus {
 	          <p class="hint">Unlock unlimited AI operations & premium features.</p>
 	        </div>
 	      </div>
-	      <div id="licenseStatus" style="font-size:12px;margin-bottom:10px;padding:8px;border-radius:6px;background:var(--panel);border:1px solid var(--line);">
-	        <span style="color:var(--muted);">Free Tier — 25 AI ops/day</span>
-	        <div id="licenseQuota" style="margin-top:4px;color:var(--accent);font-weight:600;"></div>
-	      </div>
-	      <div class="field">
-	        <label for="licenseEmail">Email (used at purchase)</label>
-	        <input type="email" id="licenseEmail" placeholder="you@example.com" autocomplete="off">
-	      </div>
-	      <div class="field">
-	        <label for="licenseKey">License Key</label>
-	        <input type="text" id="licenseKey" placeholder="AISC-XXXX-XXXX-XXXX-XXXX" autocomplete="off">
-	      </div>
-	      <div style="margin-top:10px;display:flex;gap:8px;">
-	        <button class="btn btn-primary" id="activateBtn" type="button" style="flex:1;">Activate Pro</button>
-	        <button class="btn btn-secondary" id="deactivateBtn" type="button" style="flex:1;">Deactivate</button>
-	      </div>
-	      <div id="licenseMsg" style="margin-top:8px;font-size:12px;color:var(--muted);text-align:center;"></div>
-	      <div style="margin-top:14px;padding:12px;border-radius:8px;border:1px solid var(--accent);background:rgba(0,168,132,.08);">
-	        <strong style="color:var(--accent);font-size:13px;">Upgrade to Pro</strong>
-	        <p style="color:var(--muted);font-size:12px;margin-top:4px;line-height:1.4;">
-	          Special launch pricing: <strong style="color:var(--text);">$9.90/month</strong><br>
-	          Unlimited AI ops &bull; Voice transcription &bull; Priority support<br>
-	          <a href="https://zhinno-robotics.github.io/whatsapp-sales-assistant/#pricing" target="_blank" style="color:var(--accent);">Purchase License &rarr;</a>
-	        </p>
-	      </div>
-	    </div>
-
-<div class="section" id="section-behavior" role="tabpanel" aria-labelledby="tab-behavior" hidden>
-      <div class="section-head">
-        <div>
-          <h2>Opening Behavior</h2>
-          <p class="hint">Control how the assistant appears on WhatsApp Web.</p>
-        </div>
+	            <div id="licenseStatus" style="font-size:11px;margin-bottom:6px;padding:6px 8px;border-radius:5px;background:var(--panel);border:1px solid var(--line);">
+                <span style="color:var(--muted);">Free Tier — 25 AI ops/day</span>
+                <span id="licenseQuota" style="margin-left:8px;color:var(--accent);font-weight:600;"></span>
+              </div>
+              <div class="field">
+                <label for="licenseEmail">Email</label>
+                <input type="email" id="licenseEmail" placeholder="you@example.com" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="licenseKey">License Key</label>
+                <input type="text" id="licenseKey" placeholder="AISC-XXXX-XXXX-XXXX-XXXX" autocomplete="off">
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-primary" id="activateBtn" type="button" style="flex:1;min-height:30px;">Activate Pro</button>
+                <button class="btn btn-secondary" id="deactivateBtn" type="button" style="flex:1;min-height:30px;">Deactivate</button>
+              </div>
+              <div id="licenseMsg" style="margin-top:6px;font-size:11px;color:var(--muted);text-align:center;min-height:16px;"></div>
+              <div style="margin-top:8px;padding:6px 10px;border-radius:6px;border:1px solid var(--accent);background:rgba(0,168,132,.08);font-size:11px;line-height:1.4;">
+                <strong style="color:var(--accent);">.90/mo Pro</strong> —
+                <a href="https://zhinno-robotics.github.io/whatsapp-sales-assistant/#pricing" target="_blank" style="color:var(--accent);">Purchase License →</a>
+              </div>
       </div>
       <label class="switch-card" for="autoOpenSidePanel">
         <span class="switch-copy">

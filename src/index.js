@@ -418,6 +418,7 @@ app.post('/api/transcribe', async (req, res) => {
 // ============================================================
 
 const { generateLicenseKey } = require('./license');
+const { sendLicenseEmail } = require('./email');
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin-secret-change-me';
 
 // Stripe webhook secret (set in .env as STRIPE_WEBHOOK_SECRET)
