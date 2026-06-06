@@ -428,9 +428,10 @@ function processPayment() {
     return;
   }
 
-  // PayPal checkout — hosted button
+  // PayPal checkout — hosted subscription button
+  // Uses PayPal Standard subscribe button with hosted_button_id
   var paypalUrl = 'https://www.paypal.com/cgi-bin/webscr' +
-    '?cmd=_s-xclick' +
+    '?cmd=_xclick-subscriptions' +
     '&hosted_button_id=' + PAYPAL_HOSTED_BUTTON_ID +
     '&custom=' + encodeURIComponent(email);
 
