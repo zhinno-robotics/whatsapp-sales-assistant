@@ -20,7 +20,51 @@ const PORT = process.env.PORT || 3000;
 // Raw body routes — must be BEFORE express.json() middleware
 // ============================================================
 
-// Stripe Webhook — auto-fulfill license keys on payment
+// PayPal IPN (Instant Payment Notification) — auto-fulfill on subscription
+// PayPal sends url-encoded body, not JSON
+app.post('/api/paypal-ipn', express.urlencoded({ extended: false }), async (req, res) => {
+  const txnType = req.body.txn_type;
+  const payerEmail = req.body.payer_email;
+  const itemName = req.body.item_name;
+  const paymentStatus = req.body.payment_status;
+
+  console.log(chalk.dim(`  PayPal IPN: ${txnType || 'unknown'} | status: ${paymentStatus}`));
+
+  // Only process new subscription signups
+  if (txnType === 'subscr_signup' && payerEmail) {
+    try {
+      const license = generateLicenseKey(payerEmail, 30);
+      console.log(chalk.green(`  PayPal subscr_signup — license for ${payerEmail}: ${license.key}`));
+
+      const fs = require('fs');
+      const ordersPath = path.join(config.dataPath, 'orders.jsonl');
+      try { fs.mkdirSync(path.dirname(ordersPath), { recursive: true }); } catch {}
+      fs.appendFileSync(ordersPath, JSON.stringify({
+        email: payerEmail,
+        licenseKey: license.key,
+        expiryDate: license.expiryDate,
+        source: 'paypal',
+        txnType: txnType,
+        payerEmail: payerEmail,
+        itemName: itemName,
+        createdAt: new Date().toISOString(),
+      }) + '\n');
+
+      res.send('OK');
+    } catch (err) {
+      console.error(chalk.red('  PayPal IPN license generation failed:'), err.message);
+      res.status(500).send('Error');
+    }
+  } else if (txnType === 'subscr_payment' && payerEmail) {
+    // Recurring payment — log it
+    console.log(chalk.dim(`  PayPal recurring payment from ${payerEmail}: $${req.body.mc_gross}`));
+    res.send('OK');
+  } else {
+    res.send('OK');
+  }
+});
+
+// Stripe Webhook — auto-fulfill on checkout.session.completed
 app.post('/api/stripe-webhook', express.raw({ type: '*/*' }), (req, res) => {
   let payload;
   try {
@@ -31,10 +75,6 @@ app.post('/api/stripe-webhook', express.raw({ type: '*/*' }), (req, res) => {
 
   const eventType = payload.type;
   console.log(chalk.dim(`  Stripe webhook: ${eventType || 'unknown'}`));
-
-  if (!STRIPE_WEBHOOK_SECRET) {
-    console.log(chalk.yellow('  STRIPE_WEBHOOK_SECRET not set — accepting unverified webhook'));
-  }
 
   if (eventType === 'checkout.session.completed') {
     const session = payload.data?.object || {};
@@ -47,10 +87,8 @@ app.post('/api/stripe-webhook', express.raw({ type: '*/*' }), (req, res) => {
 
     try {
       const license = generateLicenseKey(customerEmail, 30);
-      console.log(chalk.green(`  Auto-generated license for ${customerEmail}: ${license.key}`));
-      console.log(chalk.green(`  Expires: ${license.expiryDate}`));
+      console.log(chalk.green(`  Stripe checkout — license for ${customerEmail}: ${license.key}`));
 
-      // Log to orders file
       const fs = require('fs');
       const ordersPath = path.join(config.dataPath, 'orders.jsonl');
       try { fs.mkdirSync(path.dirname(ordersPath), { recursive: true }); } catch {}
@@ -58,6 +96,7 @@ app.post('/api/stripe-webhook', express.raw({ type: '*/*' }), (req, res) => {
         email: customerEmail,
         licenseKey: license.key,
         expiryDate: license.expiryDate,
+        source: 'stripe',
         stripeSessionId: session.id,
         amount: session.amount_total ? session.amount_total / 100 : null,
         currency: session.currency,

@@ -334,18 +334,18 @@ body {
     </div>
 
     <div class="field">
-      <label>Your email (for license key delivery)</label>
+      <label>Your email (license key sent here)</label>
       <input type="email" id="checkoutEmail" placeholder="you@example.com" autocomplete="email">
     </div>
 
     <div class="payment-methods">
       <h4>Select payment method</h4>
       <div class="pm-grid">
-        <button class="pm-card recommended" id="pmStripe" onclick="selectPayment('stripe')">
-          Credit / Debit Card
+        <button class="pm-card recommended" id="pmPaypal" onclick="selectPayment('paypal')">
+          PayPal / Card
         </button>
         <button class="pm-card" id="pmManual" onclick="selectPayment('manual')">
-          PayPal / Bank Transfer
+          WeChat / Alipay
         </button>
       </div>
     </div>
@@ -356,45 +356,43 @@ body {
         Pay $9.90 &rarr;
       </button>
     </div>
-    <p class="note">
-      &#x1F512; Secure payment. License key delivered instantly.<br>
-      30-day money-back guarantee. Cancel anytime.
+    <p class="note" id="paymentNote">
+      &#x1F512; PayPal secured. License key sent to your email.<br>
+      Cancel anytime. 30-day money-back guarantee.
     </p>
   </div>
 </div>
 
 <script>
 // ============================================================
-// Configuration — Replace these with your actual payment links
+// Configuration — Fill in your payment details below
 // ============================================================
 
-// ---- OPTION 1: LemonSqueezy (recommended) ----
-// 1. Create account at https://app.lemonsqueezy.com
-// 2. Create product "AI Sales Copilot Pro Monthly" at $9.90/month
-// 3. Copy the checkout URL and replace below:
-var LEMON_SQUEEZY_URL = 'https://YOUR_STORE.lemonsqueezy.com/checkout/buy/YOUR_PRODUCT_ID';
+// ---- PayPal Subscription Button (recommended) ----
+// 1. Go to https://www.paypal.com/buttons → Create "Subscribe" button
+// 2. Set price: $9.90/month, product: "AI Sales Copilot Pro"
+// 3. Copy the button's "business" ID or the full checkout link
+// 4. Replace below:
+var PAYPAL_BUSINESS_ID = 'YOUR_PAYPAL_BUSINESS_EMAIL';
+var PAYPAL_ITEM_NAME = 'AI Sales Copilot Pro Monthly';
+var PAYPAL_PRICE = '9.90';
+var PAYPAL_CURRENCY = 'USD';
 
-// ---- OPTION 2: Stripe Payment Link (quick setup) ----
-// 1. Go to https://dashboard.stripe.com/payment-links
-// 2. Create link for $9.90/month subscription
-// 3. Copy the URL and replace below:
-var STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/YOUR_LINK';
-
-// ---- Manual purchase email ----
+// ---- Contact ----
 var SUPPORT_EMAIL = 'sales@zhinno-robotics.com';
+var WECHAT_QR = '';  // Optional: direct link to WeChat pay QR image
+var ALIPAY_QR = '';  // Optional: direct link to Alipay QR image
 
 // ============================================================
+// Payment Logic
+// ============================================================
 
-var selectedPayment = 'stripe';
-var currentPlan = 'monthly';
+var selectedPayment = 'paypal';
 
 function openCheckout(plan) {
   currentPlan = plan || 'monthly';
-  document.getElementById('checkoutSub').textContent = '$9.90/month — Launch pricing (50% off)';
-  document.getElementById('planLabel').textContent = 'Monthly';
-  document.getElementById('planPrice').innerHTML = '$9.90<span style="font-size:14px;font-weight:400;">/mo</span>';
   document.getElementById('checkoutOverlay').classList.add('show');
-  selectPayment('stripe');
+  selectPayment('paypal');
 }
 
 function closeCheckout() {
@@ -403,8 +401,15 @@ function closeCheckout() {
 
 function selectPayment(method) {
   selectedPayment = method;
-  document.getElementById('pmStripe').style.borderColor = method === 'stripe' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('pmPaypal').style.borderColor = method === 'paypal' ? 'var(--accent)' : 'var(--border)';
   document.getElementById('pmManual').style.borderColor = method === 'manual' ? 'var(--accent)' : 'var(--border)';
+
+  var note = document.getElementById('paymentNote');
+  if (method === 'paypal') {
+    note.innerHTML = '&#x1F512; PayPal secured. License key sent to your email.<br>Cancel anytime. 30-day money-back guarantee.';
+  } else {
+    note.innerHTML = '&#x1F4F1; Scan QR or contact us directly.<br>License key delivered by email within 24 hours.';
+  }
 }
 
 function processPayment() {
@@ -416,60 +421,72 @@ function processPayment() {
   }
 
   if (selectedPayment === 'manual') {
-    // Manual purchase — pre-fill email
+    // WeChat/Alipay — show payment info and collect contact
     var subject = encodeURIComponent('AI Sales Copilot Pro Purchase');
     var body = encodeURIComponent(
-      'Hi, I would like to purchase the AI Sales Copilot Pro Monthly license.\n\n' +
+      'Hi, I would like to purchase AI Sales Copilot Pro Monthly.\n\n' +
       'My email: ' + email + '\n' +
       'Plan: Pro Monthly — $9.90/month\n\n' +
+      'Please send WeChat/Alipay payment details. Thank you!'
+    );
+    window.open('mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body, '_blank');
+    closeCheckout();
+    return;
+  }
+
+  // PayPal checkout
+  if (PAYPAL_BUSINESS_ID === 'YOUR_PAYPAL_BUSINESS_EMAIL') {
+    // PayPal not yet configured — fallback
+    var subject = encodeURIComponent('AI Sales Copilot Pro Purchase');
+    var body = encodeURIComponent(
+      'Hi, I would like to purchase the Pro Monthly license ($9.90/month).\n\n' +
+      'My email: ' + email + '\n\n' +
       'Please send payment instructions. Thank you!'
     );
-    window.location.href = 'mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body;
+    window.open('mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body, '_blank');
     closeCheckout();
     return;
   }
 
-  // Try LemonSqueezy first — append customer email as checkout parameter
-  if (LEMON_SQUEEZY_URL.indexOf('YOUR_STORE') < 0) {
-    // LemonSqueezy is configured — use it
-    var checkoutUrl = LEMON_SQUEEZY_URL + '?checkout[email]=' + encodeURIComponent(email);
-    window.open(checkoutUrl, '_blank');
-    closeCheckout();
-    // Show delivery message
-    setTimeout(function() {
-      alert('Payment page opened in new tab.\n\nAfter completing your purchase, your license key will be sent to ' + email + ' within a few minutes.');
-    }, 500);
-    return;
-  }
+  // Build PayPal subscription URL (Standard PayPal subscribe button)
+  var paypalUrl = 'https://www.paypal.com/cgi-bin/webscr' +
+    '?cmd=_xclick-subscriptions' +
+    '&business=' + encodeURIComponent(PAYPAL_BUSINESS_ID) +
+    '&item_name=' + encodeURIComponent(PAYPAL_ITEM_NAME) +
+    '&a3=' + PAYPAL_PRICE +
+    '&p3=1' +
+    '&t3=M' +
+    '&currency_code=' + PAYPAL_CURRENCY +
+    '&no_note=1' +
+    '&no_shipping=1' +
+    '&custom=' + encodeURIComponent(email) +
+    '&return=' + encodeURIComponent(window.location.origin + window.location.pathname + '?purchased=1');
 
-  // Try Stripe fallback
-  if (STRIPE_PAYMENT_LINK.indexOf('YOUR_LINK') < 0) {
-    window.open(STRIPE_PAYMENT_LINK + '?prefilled_email=' + encodeURIComponent(email), '_blank');
-    closeCheckout();
-    setTimeout(function() {
-      alert('Payment page opened in new tab.\n\nAfter completing your purchase, please email ' + SUPPORT_EMAIL + ' with your order confirmation and we will send your license key immediately.');
-    }, 500);
-    return;
-  }
-
-  // No payment link configured — fallback to email
-  alert('Payment gateway is being set up.\n\nPlease email ' + SUPPORT_EMAIL + ' with subject "AI Sales Copilot Pro" to complete your purchase. We will send you payment instructions and your license key.');
-  var subject = encodeURIComponent('AI Sales Copilot Pro Purchase');
-  var body = encodeURIComponent('Hi, I would like to purchase the Pro Monthly license ($9.90/month).\n\nMy email: ' + email + '\n\nPlease send payment instructions.');
-  window.location.href = 'mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body;
+  window.open(paypalUrl, '_blank');
   closeCheckout();
+
+  setTimeout(function() {
+    alert(
+      'Payment page opened in new tab.\n\n' +
+      'After completing your payment:\n' +
+      '1. PayPal will redirect you back here\n' +
+      '2. Reply to the confirmation email with "activate"\n' +
+      '3. We will send your license key to ' + email + '\n\n' +
+      'Usually within a few minutes!'
+    );
+  }, 500);
 }
 
-function toggleFAQ(el) {
-  var item = el.parentElement;
-  item.classList.toggle('open');
-  var span = el.querySelector('span');
-  span.textContent = item.classList.contains('open') ? '▾' : '▸';
+// Show success message if returning from PayPal
+if (window.location.search.indexOf('purchased=1') >= 0) {
+  setTimeout(function() {
+    alert(
+      'Thank you for your purchase!\n\n' +
+      'Your license key is being generated and will be sent to your email shortly.\n\n' +
+      'If you don\'t receive it within 10 minutes, please check spam or contact ' + SUPPORT_EMAIL
+    );
+  }, 1000);
 }
-
-document.getElementById('checkoutOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeCheckout();
-});
 </script>
 
 </body>
