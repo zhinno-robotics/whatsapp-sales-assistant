@@ -155,18 +155,43 @@ async function activateLicense() {
   }
 
   if (valid) {
-    var result = await chrome.storage.local.get('config');
-    var config = mergeConfig(result.config);
-    config.licenseKey = licenseKey;
-    config.licenseEmail = email;
-    await chrome.storage.local.set({ config: config });
-    if (msgEl) { msgEl.textContent = 'Pro activated!'; msgEl.style.color = 'var(--accent)'; }
-    await updateLicenseStatus();
-  } else {
-    if (msgEl) { msgEl.textContent = reason; msgEl.style.color = 'var(--danger)'; }
-  }
-}
+	    var result = await chrome.storage.local.get('config');
+	    var config = mergeConfig(result.config);
+	    config.licenseKey = licenseKey;
+	    config.licenseEmail = email;
+	    await chrome.storage.local.set({ config: config });
 
+	    // Button turns green briefly
+	    var activateBtn = document.getElementById('activateBtn');
+	    if (activateBtn) {
+	      activateBtn.textContent = '✓ Activated!';
+	      activateBtn.style.background = '#00a884';
+	      activateBtn.style.color = '#111b21';
+	      setTimeout(function() {
+	        activateBtn.textContent = 'Activate Pro';
+	        activateBtn.style.background = '';
+	        activateBtn.style.color = '';
+	      }, 3000);
+	    }
+
+	    // Flash status box
+	    var statusEl = document.getElementById('licenseStatus');
+	    if (statusEl) { statusEl.style.background = 'rgba(0,168,132,.15)'; }
+
+	    if (msgEl) {
+	      msgEl.textContent = '✅ Pro activated! Unlimited AI.';
+	      msgEl.style.color = 'var(--accent)';
+	      msgEl.style.fontWeight = '700';
+	    }
+	    await updateLicenseStatus();
+	  } else {
+	    if (msgEl) {
+	      msgEl.textContent = '❌ ' + reason;
+	      msgEl.style.color = 'var(--danger)';
+	    }
+	  }
+
+}
 async function deactivateLicense() {
   var result = await chrome.storage.local.get('config');
   var config = mergeConfig(result.config);
