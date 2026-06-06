@@ -112,7 +112,7 @@
 | -------------------------- | ------------------------------------------------------ |
 | storage                    | Local storage for user settings and cached messages    |
 | sidePanel                  | Display AI Sales Copilot in Chrome side panel          |
-| alarms                     | Periodic connection status refresh                     |
+
 | contextMenus               | "Open AI Sales Copilot" right-click menu item          |
 | tabs                       | Detect WhatsApp Web tabs for content script connection |
 | https://web.whatsapp.com/* | Inject content script to read/insert WhatsApp messages |
