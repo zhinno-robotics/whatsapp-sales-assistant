@@ -17,6 +17,64 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // ============================================================
+// Raw body routes — must be BEFORE express.json() middleware
+// ============================================================
+
+// Stripe Webhook — auto-fulfill license keys on payment
+app.post('/api/stripe-webhook', express.raw({ type: '*/*' }), (req, res) => {
+  let payload;
+  try {
+    payload = JSON.parse(req.body.toString());
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON' });
+  }
+
+  const eventType = payload.type;
+  console.log(chalk.dim(`  Stripe webhook: ${eventType || 'unknown'}`));
+
+  if (!STRIPE_WEBHOOK_SECRET) {
+    console.log(chalk.yellow('  STRIPE_WEBHOOK_SECRET not set — accepting unverified webhook'));
+  }
+
+  if (eventType === 'checkout.session.completed') {
+    const session = payload.data?.object || {};
+    const customerEmail = session.customer_details?.email || session.customer_email;
+
+    if (!customerEmail) {
+      console.log(chalk.yellow('  No email in Stripe session — skipping'));
+      return res.json({ received: true });
+    }
+
+    try {
+      const license = generateLicenseKey(customerEmail, 30);
+      console.log(chalk.green(`  Auto-generated license for ${customerEmail}: ${license.key}`));
+      console.log(chalk.green(`  Expires: ${license.expiryDate}`));
+
+      // Log to orders file
+      const fs = require('fs');
+      const ordersPath = path.join(config.dataPath, 'orders.jsonl');
+      try { fs.mkdirSync(path.dirname(ordersPath), { recursive: true }); } catch {}
+      fs.appendFileSync(ordersPath, JSON.stringify({
+        email: customerEmail,
+        licenseKey: license.key,
+        expiryDate: license.expiryDate,
+        stripeSessionId: session.id,
+        amount: session.amount_total ? session.amount_total / 100 : null,
+        currency: session.currency,
+        createdAt: new Date().toISOString(),
+      }) + '\n');
+
+      res.json({ received: true, license_generated: true, email: customerEmail });
+    } catch (err) {
+      console.error(chalk.red('  License generation failed:'), err.message);
+      res.status(500).json({ error: err.message });
+    }
+  } else {
+    res.json({ received: true });
+  }
+});
+
+// ============================================================
 // Middleware
 // ============================================================
 
@@ -322,6 +380,11 @@ app.post('/api/transcribe', async (req, res) => {
 
 const { generateLicenseKey } = require('./license');
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin-secret-change-me';
+
+// Stripe webhook secret (set in .env as STRIPE_WEBHOOK_SECRET)
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+// Stripe API key for verifying sessions (set in .env as STRIPE_SECRET_KEY)
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 
 app.post('/api/generate-key', (req, res) => {
   const { email, days, adminSecret } = req.body;

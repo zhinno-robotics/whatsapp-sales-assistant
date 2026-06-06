@@ -81,7 +81,7 @@ body {
 .price-card ul li .cross { color: var(--danger); }
 .price-card .btn { width: 100%; text-align: center; }
 
-/* How it works */
+/* Steps */
 .steps { padding: 0 0 80px; }
 .steps h2 { text-align: center; font-size: 28px; margin-bottom: 40px; }
 .step-list { max-width: 600px; margin: 0 auto; }
@@ -107,30 +107,52 @@ body {
 .footer a { color: var(--accent); text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
 
-/* Checkout modal */
+/* Checkout overlay */
 .overlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
   z-index: 1000; justify-content: center; align-items: center;
 }
 .overlay.show { display: flex; }
-.modal {
-  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-  padding: 32px; width: 100%; max-width: 440px; margin: 16px;
+.checkout-modal {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 36px; width: 100%; max-width: 480px; margin: 16px;
 }
-.modal h3 { margin-bottom: 16px; }
-.modal input {
-  width: 100%; padding: 12px; background: #202c33; border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 12px;
-  font-family: inherit;
+.checkout-modal h2 { font-size: 22px; margin-bottom: 8px; }
+.checkout-modal .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+.checkout-modal .field { margin-bottom: 16px; }
+.checkout-modal label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.checkout-modal input {
+  width: 100%; padding: 12px 14px; background: #202c33; border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 15px; font-family: inherit;
 }
-.modal .note { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
-.modal .actions { display: flex; gap: 8px; }
-.modal .actions .btn { flex: 1; text-align: center; }
+.checkout-modal input:focus { outline: none; border-color: var(--accent); }
+.checkout-modal .plan-summary {
+  background: rgba(0,168,132,.08); border: 1px solid rgba(0,168,132,.2);
+  border-radius: 10px; padding: 14px; margin-bottom: 20px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.checkout-modal .plan-name { font-weight: 600; }
+.checkout-modal .plan-price { font-size: 20px; font-weight: 800; color: var(--accent); }
+.checkout-modal .payment-methods { margin-bottom: 20px; }
+.checkout-modal .payment-methods h4 { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.checkout-modal .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.checkout-modal .pm-card {
+  padding: 14px; border: 1px solid var(--border); border-radius: 10px;
+  text-align: center; cursor: pointer; transition: border-color .15s; background: transparent;
+  color: var(--text); font-family: inherit; font-size: 13px; font-weight: 600;
+}
+.checkout-modal .pm-card:hover { border-color: var(--accent); background: rgba(0,168,132,.05); }
+.checkout-modal .pm-card.recommended { border-color: var(--accent); }
+.checkout-modal .pm-card.recommended::after { content: 'Recommended'; display: block; font-size: 10px; color: var(--accent); font-weight: 400; margin-top: 3px; }
+.checkout-modal .actions { display: flex; gap: 10px; margin-top: 8px; }
+.checkout-modal .actions .btn { flex: 1; text-align: center; }
+.checkout-modal .note { font-size: 12px; color: var(--muted); margin-top: 12px; text-align: center; line-height: 1.5; }
 
 @media (max-width: 640px) {
   .hero h1 { font-size: 28px; }
   .hero { padding: 40px 0; }
   .price-grid { grid-template-columns: 1fr; }
+  .checkout-modal { padding: 24px; }
 }
 </style>
 </head>
@@ -143,7 +165,7 @@ body {
     <p>Real-time translation, smart reply suggestions, and professional copywriting — right inside WhatsApp Web.</p>
     <div class="cta-row">
       <a href="#pricing" class="btn btn-primary btn-large">Get Pro — $9.90/mo</a>
-      <a href="https://chrome.google.com/webstore" class="btn btn-outline">Add to Chrome — Free</a>
+      <a href="https://chrome.google.com/webstore/detail/nmeajhiajofmnchcnlgbbcajdgkecdpj" class="btn btn-outline">Add to Chrome — Free</a>
     </div>
   </div>
 </section>
@@ -154,32 +176,32 @@ body {
     <h2>Everything You Need to Close Deals Faster</h2>
     <div class="feature-grid">
       <div class="feature-card">
-        <div class="icon">🌐</div>
+        <div class="icon">&#x1F310;</div>
         <h3>Real-time Translation</h3>
         <p>Instantly translate customer messages between 16+ languages. Understand every inquiry without leaving WhatsApp.</p>
       </div>
       <div class="feature-card">
-        <div class="icon">💬</div>
+        <div class="icon">&#x1F4AC;</div>
         <h3>AI Reply Suggestions</h3>
         <p>5 professional reply options in different tones: Professional, Friendly, Closing, Detailed, and Concise.</p>
       </div>
       <div class="feature-card">
-        <div class="icon">✍️</div>
+        <div class="icon">&#x270D;&#xFE0F;</div>
         <h3>Custom AI Replies</h3>
         <p>Describe what you want to say in your language. AI crafts a polished, natural-sounding response instantly.</p>
       </div>
       <div class="feature-card">
-        <div class="icon">🔒</div>
+        <div class="icon">&#x1F512;</div>
         <h3>Bring Your Own API Key</h3>
         <p>Use DeepSeek, OpenAI, or any compatible API. Your data never passes through our servers.</p>
       </div>
       <div class="feature-card">
-        <div class="icon">⚡</div>
+        <div class="icon">&#x26A1;</div>
         <h3>Side Panel UI</h3>
         <p>Non-intrusive Chrome side panel. Chat list, message history, and AI tools — always accessible.</p>
       </div>
       <div class="feature-card">
-        <div class="icon">🎤</div>
+        <div class="icon">&#x1F3A4;</div>
         <h3>Voice Transcription</h3>
         <p>Convert WhatsApp voice messages to text. Never miss important voice notes from clients. (Pro)</p>
       </div>
@@ -191,43 +213,43 @@ body {
 <section class="pricing" id="pricing">
   <div class="container">
     <h2>Simple, Transparent Pricing</h2>
-    <p class="subtitle">Launch special. Prices will increase after the beta period.</p>
+    <p class="subtitle">Launch special. Lifetime discount for early adopters.</p>
     <div class="price-grid">
       <!-- Free -->
       <div class="price-card">
         <h3>Free</h3>
-        <div class="price">$0<span class="unit"></span></div>
+        <div class="price">$0</div>
         <div class="period">Forever free</div>
         <ul>
-          <li><span class="check">✓</span> 25 AI operations / day</li>
-          <li><span class="check">✓</span> Real-time translation</li>
-          <li><span class="check">✓</span> 5 reply suggestions</li>
-          <li><span class="check">✓</span> Custom AI replies</li>
-          <li><span class="check">✓</span> 16+ languages</li>
-          <li><span class="cross">✗</span> Voice transcription</li>
-          <li><span class="cross">✗</span> Unlimited AI operations</li>
-          <li><span class="cross">✗</span> Priority support</li>
+          <li><span class="check">&#x2713;</span> 25 AI operations / day</li>
+          <li><span class="check">&#x2713;</span> Real-time translation</li>
+          <li><span class="check">&#x2713;</span> 5 reply suggestions</li>
+          <li><span class="check">&#x2713;</span> Custom AI replies</li>
+          <li><span class="check">&#x2713;</span> 16+ languages</li>
+          <li><span class="cross">&#x2717;</span> Voice transcription</li>
+          <li><span class="cross">&#x2717;</span> Unlimited AI operations</li>
+          <li><span class="cross">&#x2717;</span> Priority support</li>
         </ul>
-        <a href="https://chrome.google.com/webstore" class="btn btn-outline">Add to Chrome</a>
+        <a href="https://chrome.google.com/webstore/detail/nmeajhiajofmnchcnlgbbcajdgkecdpj" class="btn btn-outline">Add to Chrome</a>
       </div>
 
-      <!-- Pro -->
+      <!-- Pro Monthly -->
       <div class="price-card pro">
         <div class="badge">LAUNCH SALE</div>
-        <h3>Pro</h3>
+        <h3>Pro Monthly</h3>
         <div class="price"><span class="original">$19.90</span>$9.90<span class="unit">/mo</span></div>
         <div class="period"><span class="promo">50% off — limited time</span></div>
         <ul>
-          <li><span class="check">✓</span> <strong>Unlimited</strong> AI operations</li>
-          <li><span class="check">✓</span> Real-time translation</li>
-          <li><span class="check">✓</span> 5 reply suggestions</li>
-          <li><span class="check">✓</span> Custom AI replies</li>
-          <li><span class="check">✓</span> 16+ languages</li>
-          <li><span class="check">✓</span> Voice transcription (soon)</li>
-          <li><span class="check">✓</span> Priority email support</li>
-          <li><span class="check">✓</span> Future Pro features</li>
+          <li><span class="check">&#x2713;</span> <strong>Unlimited</strong> AI operations</li>
+          <li><span class="check">&#x2713;</span> Real-time translation</li>
+          <li><span class="check">&#x2713;</span> 5 reply suggestions</li>
+          <li><span class="check">&#x2713;</span> Custom AI replies</li>
+          <li><span class="check">&#x2713;</span> 16+ languages</li>
+          <li><span class="check">&#x2713;</span> Voice transcription (soon)</li>
+          <li><span class="check">&#x2713;</span> Priority email support</li>
+          <li><span class="check">&#x2713;</span> Future Pro features</li>
         </ul>
-        <button class="btn btn-primary" onclick="openCheckout()">Buy Pro — $9.90/mo</button>
+        <button class="btn btn-primary" onclick="openCheckout('monthly')">Buy Monthly — $9.90</button>
       </div>
     </div>
   </div>
@@ -240,31 +262,19 @@ body {
     <div class="step-list">
       <div class="step">
         <div class="num">1</div>
-        <div>
-          <h4>Add to Chrome</h4>
-          <p>Install the free extension from the Chrome Web Store. Open WhatsApp Web and the side panel appears.</p>
-        </div>
+        <div><h4>Add to Chrome</h4><p>Install the free extension. Open WhatsApp Web and the AI sidebar appears automatically.</p></div>
       </div>
       <div class="step">
         <div class="num">2</div>
-        <div>
-          <h4>Configure Your AI Key</h4>
-          <p>Enter your DeepSeek or OpenAI API key in the extension popup. Your data stays private — AI calls go directly to your provider.</p>
-        </div>
+        <div><h4>Configure Your AI Key</h4><p>Enter your DeepSeek or OpenAI API key. Your data stays private — AI calls go directly to your provider.</p></div>
       </div>
       <div class="step">
         <div class="num">3</div>
-        <div>
-          <h4>Upgrade to Pro</h4>
-          <p>Hit your free daily limit? Upgrade to Pro for unlimited access. You'll receive a license key instantly.</p>
-        </div>
+        <div><h4>Hit the Free Limit? Upgrade</h4><p>When you reach 25 AI ops/day, the banner turns red. One click to purchase Pro.</p></div>
       </div>
       <div class="step">
         <div class="num">4</div>
-        <div>
-          <h4>Activate & Sell More</h4>
-          <p>Enter your license key in the extension. Unlimited AI operations. Focus on closing deals, not typing replies.</p>
-        </div>
+        <div><h4>Activate & Sell More</h4><p>Enter your license key to unlock unlimited AI. Focus on closing deals, not typing replies.</p></div>
       </div>
     </div>
   </div>
@@ -274,27 +284,27 @@ body {
 <section class="faq container">
   <h2>Frequently Asked Questions</h2>
   <div class="faq-item open">
-    <h4 onclick="toggleFAQ(this)">Do I need my own API key? <span>▾</span></h4>
-    <p>Yes. You bring your own DeepSeek or OpenAI API key. This keeps your data private and your costs under your control. DeepSeek is ~$0.14 per million tokens — very affordable.</p>
+    <h4 onclick="toggleFAQ(this)">Do I need my own API key? <span>&#x25BE;</span></h4>
+    <p>Yes. You bring your own DeepSeek or OpenAI API key. This keeps your data private and your costs under your control. DeepSeek is ~$0.14 per million tokens — very affordable for daily B2B use.</p>
   </div>
   <div class="faq-item">
-    <h4 onclick="toggleFAQ(this)">How is the license key delivered? <span>▸</span></h4>
-    <p>After purchase, you'll receive a license key by email within a few minutes. Enter it in the extension popup under the "Pro" tab along with your email address to activate unlimited access.</p>
+    <h4 onclick="toggleFAQ(this)">How is the license key delivered? <span>&#x25B8;</span></h4>
+    <p>After payment, you will receive your license key within a few minutes. Enter it in the extension popup under the "Pro" tab along with your email address to activate unlimited access.</p>
   </div>
   <div class="faq-item">
-    <h4 onclick="toggleFAQ(this)">What payment methods are accepted? <span>▸</span></h4>
-    <p>We accept credit/debit cards and major digital wallets. All payments are processed securely.</p>
+    <h4 onclick="toggleFAQ(this)">What payment methods are accepted? <span>&#x25B8;</span></h4>
+    <p>We accept credit/debit cards (Visa, Mastercard, Amex), Apple Pay, and Google Pay. All payments are processed securely by our payment partner.</p>
   </div>
   <div class="faq-item">
-    <h4 onclick="toggleFAQ(this)">Can I cancel anytime? <span>▸</span></h4>
-    <p>Yes. Pro is a monthly subscription. Cancel anytime and your license remains active until the end of the billing period. No long-term contracts.</p>
+    <h4 onclick="toggleFAQ(this)">Can I cancel anytime? <span>&#x25B8;</span></h4>
+    <p>Yes. You can cancel your subscription anytime from the customer portal. Your access remains active until the end of the current billing period.</p>
   </div>
   <div class="faq-item">
-    <h4 onclick="toggleFAQ(this)">Is my data secure? <span>▸</span></h4>
-    <p>Absolutely. AI requests go directly from your browser to your configured AI provider (DeepSeek, OpenAI, etc.). We never see your messages, API keys, or chat data. Everything is stored locally in Chrome.</p>
+    <h4 onclick="toggleFAQ(this)">Is my data secure? <span>&#x25B8;</span></h4>
+    <p>Absolutely. AI requests go directly from your browser to your configured AI provider. We never see your messages, API keys, or chat data. Everything is stored locally in Chrome.</p>
   </div>
   <div class="faq-item">
-    <h4 onclick="toggleFAQ(this)">How does the 25/day free limit work? <span>▸</span></h4>
+    <h4 onclick="toggleFAQ(this)">How does the 25/day free limit work? <span>&#x25B8;</span></h4>
     <p>Free users get 25 AI operations per day (translations + suggestions + custom replies). The counter resets daily. Pro users have no limits.</p>
   </div>
 </section>
@@ -303,72 +313,151 @@ body {
 <footer class="footer">
   <div class="container">
     <p>AI Sales Copilot &copy; 2026. Built for B2B sales professionals.</p>
-    <p><a href="privacy.html">Privacy Policy</a> &middot; <a href="mailto:support@zhinno-robotics.com">Contact</a></p>
+    <p><a href="privacy.html">Privacy Policy</a> &middot; <a href="mailto:sales@zhinno-robotics.com">Contact</a></p>
   </div>
 </footer>
 
+<!-- ================================================================ -->
 <!-- Checkout Modal -->
+<!-- ================================================================ -->
 <div class="overlay" id="checkoutOverlay">
-  <div class="modal">
-    <h3>💎 Upgrade to Pro</h3>
-    <p style="color:var(--muted);font-size:14px;margin-bottom:16px;">
-      Launch price: <strong style="color:var(--accent);">$9.90/month</strong> (50% off regular $19.90)
-    </p>
+  <div class="checkout-modal">
+    <h2>&#x1F48E; Upgrade to Pro</h2>
+    <p class="sub" id="checkoutSub">$9.90/month — Launch pricing (50% off)</p>
 
-    <!-- Step 1: Email input -->
-    <div id="checkoutStep1">
-      <label style="font-size:13px;color:var(--muted);">Your email address</label>
+    <div class="plan-summary">
+      <div>
+        <div class="plan-name">Pro <span id="planLabel">Monthly</span></div>
+        <div style="font-size:12px;color:var(--muted);">Unlimited AI operations</div>
+      </div>
+      <div class="plan-price" id="planPrice">$9.90<span style="font-size:14px;font-weight:400;">/mo</span></div>
+    </div>
+
+    <div class="field">
+      <label>Your email (for license key delivery)</label>
       <input type="email" id="checkoutEmail" placeholder="you@example.com" autocomplete="email">
-      <p class="note">Your license key will be tied to this email.</p>
-      <div class="actions">
-        <button class="btn btn-outline" onclick="closeCheckout()" style="background:transparent;">Cancel</button>
-        <button class="btn btn-primary" onclick="checkoutNext()">Continue to Payment →</button>
+    </div>
+
+    <div class="payment-methods">
+      <h4>Select payment method</h4>
+      <div class="pm-grid">
+        <button class="pm-card recommended" id="pmStripe" onclick="selectPayment('stripe')">
+          Credit / Debit Card
+        </button>
+        <button class="pm-card" id="pmManual" onclick="selectPayment('manual')">
+          PayPal / Bank Transfer
+        </button>
       </div>
     </div>
 
-    <!-- Step 2: Payment -->
-    <div id="checkoutStep2" style="display:none;">
-      <p class="note">
-        Complete payment to receive your license key.<br>
-        After payment, your license key will appear here and be sent to <strong id="checkoutEmailDisplay"></strong>.
-      </p>
-      <div style="text-align:center;padding:20px 0;">
-        <span style="color:var(--warn);font-size:14px;">⚡ Payment gateway coming soon</span>
-        <p style="color:var(--muted);font-size:13px;margin-top:8px;">
-          In the meantime, email <strong>sales@zhinno-robotics.com</strong> with your desired email address to purchase manually. We'll send your license key within 24 hours.
-        </p>
-      </div>
-      <div class="actions">
-        <button class="btn btn-outline" onclick="checkoutBack()">← Back</button>
-        <a class="btn btn-primary" href="mailto:sales@zhinno-robotics.com?subject=AI%20Sales%20Copilot%20Pro%20Purchase&body=Hi%2C%20I'd%20like%20to%20purchase%20the%20Pro%20license.%20My%20email%3A%20" id="emailPurchaseLink">Email to Purchase</a>
-      </div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="closeCheckout()">Cancel</button>
+      <button class="btn btn-primary" id="btnPay" onclick="processPayment()">
+        Pay $9.90 &rarr;
+      </button>
     </div>
+    <p class="note">
+      &#x1F512; Secure payment. License key delivered instantly.<br>
+      30-day money-back guarantee. Cancel anytime.
+    </p>
   </div>
 </div>
 
 <script>
-function openCheckout() {
+// ============================================================
+// Configuration — Replace these with your actual payment links
+// ============================================================
+
+// ---- OPTION 1: LemonSqueezy (recommended) ----
+// 1. Create account at https://app.lemonsqueezy.com
+// 2. Create product "AI Sales Copilot Pro Monthly" at $9.90/month
+// 3. Copy the checkout URL and replace below:
+var LEMON_SQUEEZY_URL = 'https://YOUR_STORE.lemonsqueezy.com/checkout/buy/YOUR_PRODUCT_ID';
+
+// ---- OPTION 2: Stripe Payment Link (quick setup) ----
+// 1. Go to https://dashboard.stripe.com/payment-links
+// 2. Create link for $9.90/month subscription
+// 3. Copy the URL and replace below:
+var STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/YOUR_LINK';
+
+// ---- Manual purchase email ----
+var SUPPORT_EMAIL = 'sales@zhinno-robotics.com';
+
+// ============================================================
+
+var selectedPayment = 'stripe';
+var currentPlan = 'monthly';
+
+function openCheckout(plan) {
+  currentPlan = plan || 'monthly';
+  document.getElementById('checkoutSub').textContent = '$9.90/month — Launch pricing (50% off)';
+  document.getElementById('planLabel').textContent = 'Monthly';
+  document.getElementById('planPrice').innerHTML = '$9.90<span style="font-size:14px;font-weight:400;">/mo</span>';
   document.getElementById('checkoutOverlay').classList.add('show');
-  document.getElementById('checkoutStep1').style.display = 'block';
-  document.getElementById('checkoutStep2').style.display = 'none';
+  selectPayment('stripe');
 }
 
 function closeCheckout() {
   document.getElementById('checkoutOverlay').classList.remove('show');
 }
 
-function checkoutNext() {
-  var email = document.getElementById('checkoutEmail').value.trim();
-  if (!email) { alert('Please enter your email address.'); return; }
-  document.getElementById('checkoutEmailDisplay').textContent = email;
-  document.getElementById('emailPurchaseLink').href = 'mailto:sales@zhinno-robotics.com?subject=AI%20Sales%20Copilot%20Pro%20Purchase&body=Hi%2C%20I%27d%20like%20to%20purchase%20the%20Pro%20license.%0A%0AMy%20email%3A%20' + encodeURIComponent(email);
-  document.getElementById('checkoutStep1').style.display = 'none';
-  document.getElementById('checkoutStep2').style.display = 'block';
+function selectPayment(method) {
+  selectedPayment = method;
+  document.getElementById('pmStripe').style.borderColor = method === 'stripe' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('pmManual').style.borderColor = method === 'manual' ? 'var(--accent)' : 'var(--border)';
 }
 
-function checkoutBack() {
-  document.getElementById('checkoutStep1').style.display = 'block';
-  document.getElementById('checkoutStep2').style.display = 'none';
+function processPayment() {
+  var email = document.getElementById('checkoutEmail').value.trim();
+  if (!email || email.indexOf('@') < 0) {
+    alert('Please enter a valid email address for license key delivery.');
+    document.getElementById('checkoutEmail').focus();
+    return;
+  }
+
+  if (selectedPayment === 'manual') {
+    // Manual purchase — pre-fill email
+    var subject = encodeURIComponent('AI Sales Copilot Pro Purchase');
+    var body = encodeURIComponent(
+      'Hi, I would like to purchase the AI Sales Copilot Pro Monthly license.\n\n' +
+      'My email: ' + email + '\n' +
+      'Plan: Pro Monthly — $9.90/month\n\n' +
+      'Please send payment instructions. Thank you!'
+    );
+    window.location.href = 'mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body;
+    closeCheckout();
+    return;
+  }
+
+  // Try LemonSqueezy first — append customer email as checkout parameter
+  if (LEMON_SQUEEZY_URL.indexOf('YOUR_STORE') < 0) {
+    // LemonSqueezy is configured — use it
+    var checkoutUrl = LEMON_SQUEEZY_URL + '?checkout[email]=' + encodeURIComponent(email);
+    window.open(checkoutUrl, '_blank');
+    closeCheckout();
+    // Show delivery message
+    setTimeout(function() {
+      alert('Payment page opened in new tab.\n\nAfter completing your purchase, your license key will be sent to ' + email + ' within a few minutes.');
+    }, 500);
+    return;
+  }
+
+  // Try Stripe fallback
+  if (STRIPE_PAYMENT_LINK.indexOf('YOUR_LINK') < 0) {
+    window.open(STRIPE_PAYMENT_LINK + '?prefilled_email=' + encodeURIComponent(email), '_blank');
+    closeCheckout();
+    setTimeout(function() {
+      alert('Payment page opened in new tab.\n\nAfter completing your purchase, please email ' + SUPPORT_EMAIL + ' with your order confirmation and we will send your license key immediately.');
+    }, 500);
+    return;
+  }
+
+  // No payment link configured — fallback to email
+  alert('Payment gateway is being set up.\n\nPlease email ' + SUPPORT_EMAIL + ' with subject "AI Sales Copilot Pro" to complete your purchase. We will send you payment instructions and your license key.');
+  var subject = encodeURIComponent('AI Sales Copilot Pro Purchase');
+  var body = encodeURIComponent('Hi, I would like to purchase the Pro Monthly license ($9.90/month).\n\nMy email: ' + email + '\n\nPlease send payment instructions.');
+  window.location.href = 'mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body;
+  closeCheckout();
 }
 
 function toggleFAQ(el) {
@@ -378,7 +467,6 @@ function toggleFAQ(el) {
   span.textContent = item.classList.contains('open') ? '▾' : '▸';
 }
 
-// Close overlay on background click
 document.getElementById('checkoutOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeCheckout();
 });
