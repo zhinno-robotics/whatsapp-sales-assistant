@@ -181,6 +181,8 @@ async function incrementDailyUsage() {
 }
 
 async function isPro(config) {
+  // Developer bypass — set devMode:true via chrome.storage.local
+  if (config && config.devMode === true) return true;
   if (!config || !config.licenseKey || !config.licenseEmail) return false;
   const result = await validateLicenseKey(config.licenseKey, config.licenseEmail);
   return result.valid;
