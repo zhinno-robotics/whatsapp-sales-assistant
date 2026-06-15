@@ -188,6 +188,17 @@ function handleBgMessage(msg) {
       handleNewMessage(data);
       break;
 
+    case 'active_chat_changed':
+      if (data.chatId) {
+        if (!state.chats[data.chatId] && data.chat) {
+          state.chats[data.chatId] = data.chat;
+        }
+        if (state.activeChat !== data.chatId) {
+          selectChatFromPage(data.chatId);
+        }
+      }
+      break;
+
     case 'message_sent':
       handleSentMessage(data);
       break;
@@ -277,6 +288,9 @@ function handleSentMessage(msg) {
   if (!state.messages[msg.chatId]) {
     state.messages[msg.chatId] = [];
   }
+  // Avoid duplicate sent messages
+  const existing = state.messages[msg.chatId].find(m => m.messageId === msg.messageId || (m.body === msg.body && m.fromMe && Math.abs((m.timestamp || 0) - (msg.timestamp || 0)) < 5));
+  if (existing) return;
   state.messages[msg.chatId].push(msg);
   state.messages[msg.chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
@@ -488,10 +502,31 @@ function selectChat(chatId) {
   renderChatList();
 }
 
+function selectChatFromPage(chatId) {
+  state.activeChat = chatId;
+  const chat = state.chats[chatId];
+
+  // Update header
+  document.getElementById('chatHeaderText').textContent = chat ? chat.name : 'Unknown';
+
+  // Show chat view, hide sidebar
+  document.getElementById('sidebar').classList.add('hide');
+  document.getElementById('chatView').classList.add('active');
+
+  // Load messages
+  sendToBg('get_messages', { chatId, limit: 100 });
+
+  // Mark as read
+  sendToBg('mark_read', { chatId });
+
+  renderChatList();
+}
+
 function goBack() {
   state.activeChat = null;
   document.getElementById('sidebar').classList.remove('hide');
   document.getElementById('chatView').classList.remove('active');
+  sendToBg('sidebar_back', {});
   renderChatList();
 }
 
@@ -643,8 +678,16 @@ function generateAI() {
 }
 
 function translateAIResult() {
-  const $customerResult = document.getElementById('aiResultEn');
-  $customerResult.style.display = $customerResult.style.display === 'none' ? 'block' : 'none';
+  const zhText = document.getElementById('aiResultZh').value.trim();
+  if (!zhText) return;
+  const $result = document.getElementById('aiResultEn');
+  $result.textContent = 'Translating...';
+  $result.style.display = 'block';
+  sendToBg('translate_message', {
+    messageId: 'ai_temp',
+    body: zhText,
+    direction: 'to_customer',
+  });
 }
 
 function sendAIResult(target) {
@@ -785,6 +828,7 @@ function translateModalText() {
   sendToBg('translate_message', {
     messageId: 'modal_temp',
     body: text,
+    direction: 'to_customer',
   });
 
   // Listen for the translation result
@@ -901,6 +945,16 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       generateAI();
     }
+  });
+
+  // When user edits aiResultZh, clear the stale English translation display
+  document.getElementById('aiResultZh').addEventListener('input', () => {
+    const $enEl = document.getElementById('aiResultEn');
+    if ($enEl) {
+      $enEl.textContent = '';
+      $enEl.style.display = 'none';
+    }
+    state.aiResultEn = '';
   });
 
   // Close modals on backdrop click

@@ -71,7 +71,7 @@ a { color: #4fc3f7; }
 #aiPopup .box .btn-gen { background: #7c4dff; color: #fff; }
 #aiPopup .box .btn-cancel { background: #333; color: #aaa; }
 #aiPopup .box .result { margin-top: 16px; padding: 12px; background: #111; border-radius: 8px; color: #ccc; font-size: 14px; display: none; }
-#aiPopup .box .result textarea { width: 100%; min-height: 60px; max-height: 200px; resize: none; overflow-y: auto; }
+#aiPopup .box .result textarea { width: 100%; min-height: 120px; max-height: 240px; resize: none; overflow-y: auto; }
 #aiPopup .box .result .actions { margin-top: 10px; }
 #aiPopup .box .result .btn-use { background: #4caf50; color: #fff; }
 
@@ -91,7 +91,7 @@ a { color: #4fc3f7; }
 #replyModal .modal-body .opt-card .en { font-size: 13px; color: #ddd; }
 #replyModal .modal-body .opt-card .zh { font-size: 12px; color: #888; margin-top: 4px; }
 #replyModal .modal-footer { padding: 16px 20px; border-top: 1px solid #2a2a2a; flex-shrink: 0; }
-#replyModal .modal-footer textarea { width: 100%; background:#111; border:1px solid #333; border-radius:8px; color:#ddd; padding:10px 14px; font-family:inherit; font-size:14px; resize:none; min-height:60px; max-height:200px; overflow-y:auto; outline:none; }
+#replyModal .modal-footer textarea { width: 100%; background:#111; border:1px solid #333; border-radius:8px; color:#ddd; padding:10px 14px; font-family:inherit; font-size:14px; resize:none; min-height:140px; max-height:350px; overflow-y:auto; outline:none; }
 #replyModal .modal-footer textarea:focus { border-color:#7c4dff; }
 #replyModal .modal-footer .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; }
 #replyModal .modal-footer .actions button { padding:8px 18px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
@@ -344,7 +344,7 @@ html.compact #replyModal .modal-footer {
 html.compact #replyModal .modal-footer textarea {
   width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
-  font-family: inherit; font-size: 13px; resize: vertical; min-height: 50px; outline: none;
+  font-family: inherit; font-size: 13px; resize: vertical; min-height: 140px; max-height: 350px; outline: none;
 }
 html.compact #replyModal .modal-footer textarea:focus { border-color: var(--send-btn); }
 html.compact #replyModal .modal-footer .actions {
@@ -364,7 +364,7 @@ html.compact #replyModal .modal-footer #modalTranslation { background: var(--bg-
 
 /* AI popup result textarea (Chinese — editable) */
 html.compact #aiResultZh {
-  width: 100% !important; min-height: 60px; max-height: 180px; background: var(--bg-input-field); border: 1px solid var(--border);
+  width: 100% !important; min-height: 120px; max-height: 240px; background: var(--bg-input-field); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
   font-family: inherit; font-size: 13px; resize: none; overflow-y: auto; outline: none;
 }
@@ -374,7 +374,7 @@ html.compact #aiResultZh:focus { border-color: var(--send-btn); }
 html.compact #replyModal .modal-footer textarea {
   width: 100%; background: var(--bg-input-field); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text-primary); padding: 8px 12px;
-  font-family: inherit; font-size: 13px; resize: none; min-height: 60px; max-height: 200px; overflow-y: auto; outline: none;
+  font-family: inherit; font-size: 13px; resize: none; min-height: 140px; max-height: 350px; overflow-y: auto; outline: none;
 }
 html.compact #aiResultZh:focus { border-color: var(--send-btn); }
 html.compact .btn-trans { border-radius: 8px; cursor: pointer; font-size: 12px; padding: 7px 14px; }
@@ -477,8 +477,8 @@ const state = {
   activeChat: null,
   aiResultText: '',
   aiResultTextZh: '',
+  aiResultTextDirty: false,
 };
-
 // DOM refs
 const $chatList = document.getElementById('chatList');
 const $chatHeader = document.getElementById('chatHeader');
@@ -678,8 +678,12 @@ function addSentMessage(data) {
   const chat = state.chats[data.chatId];
   if (!chat) return;
 
+  const msgId = data.messageId || `sent_${Date.now()}`;
+  const exists = chat.messages.some(m => m.message_id === msgId);
+  if (exists) return;
+
   chat.messages.push({
-    message_id: `sent_${Date.now()}`,
+    message_id: msgId,
     sender: 'me',
     body: data.text,
     translation: null,
@@ -736,6 +740,13 @@ function selectChat(chatId) {
 
   // Scroll to bottom
   setTimeout(() => { $messages.scrollTop = $messages.scrollHeight; }, 50);
+
+  // Notify parent shell to open/sync WhatsApp active chat
+  const chat = state.chats[chatId];
+  const num = chat ? chat.contact_number : '';
+  if (window.parent) {
+    window.parent.postMessage({ action: 'open_chat', chatId: chatId, number: num }, '*');
+  }
 }
 
 function renderIfActive(chatId) {
@@ -842,6 +853,9 @@ function openAIPopup() {
   $aiResult.style.display = 'none';
   document.getElementById('aiResultZh').value = '';
   document.getElementById('aiResultEn').style.display = 'none';
+  state.aiResultText = '';
+  state.aiResultTextZh = '';
+  state.aiResultTextDirty = false;
   $aiPopup.classList.add('show');
   $aiPrompt.focus();
   // Escape to close
@@ -856,14 +870,18 @@ async function generateAI() {
   document.querySelector('#aiPopup .btn-gen').textContent = 'Generating...';
 
   try {
-    const { en, zh } = await apiCustom(state.activeChat, prompt);
+    const { reply: en, zh } = await apiCustom(state.activeChat, prompt);
     state.aiResultTextZh = zh;
     state.aiResultText = en;
+    state.aiResultTextDirty = false;
     // Primary: Chinese (editable)
     document.getElementById('aiResultZh').value = zh || '';
     autoResizeTextarea(document.getElementById('aiResultZh'));
-    document.getElementById('aiResultEn').textContent = '';
-    document.getElementById('aiResultEn').style.display = 'none';
+    
+    // Display translation directly
+    const enEl = document.getElementById('aiResultEn');
+    enEl.textContent = '🇬🇧 ' + (en || '(no translation)');
+    enEl.style.display = 'block';
     $aiResult.style.display = 'block';
   } catch (err) {
     document.getElementById('aiResultZh').value = 'Error: ' + err.message;
@@ -882,31 +900,64 @@ async function translateAIResult() {
   enEl.textContent = '⏳ Translating...';
   enEl.style.display = 'block';
   try {
-    const res = await fetch('/api/custom', {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId: state.activeChat, prompt: 'Translate the following Chinese text to English. Only output the translation, nothing else:\n\n' + zhText }),
+      body: JSON.stringify({ chatId: state.activeChat, text: zhText }),
     });
     const data = await res.json();
-    state.aiResultText = data.reply || data.zh || '';
+    state.aiResultText = data.translation || '';
+    state.aiResultTextDirty = false;
     enEl.textContent = '🇬🇧 ' + (state.aiResultText || '(no translation)');
   } catch (e) {
     enEl.textContent = '⚠ Translation failed';
   }
 }
 
-function sendAIResult(lang) {
+async function sendAIResult(lang) {
   let text;
   if (lang === 'zh') {
     text = document.getElementById('aiResultZh').value.trim();
     state.aiResultTextZh = text;
   } else {
-    text = state.aiResultText;
+    const zhText = document.getElementById('aiResultZh').value.trim();
+    const enEl = document.getElementById('aiResultEn');
+    
+    // If dirty (user edited the Chinese text) or no translation exists, translate synchronously
+    if (state.aiResultTextDirty || !state.aiResultText) {
+      if (enEl) {
+        enEl.textContent = '⏳ Translating...';
+        enEl.style.display = 'block';
+      }
+      try {
+        const res = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatId: state.activeChat, text: zhText }),
+        });
+        const data = await res.json();
+        text = data.translation || '';
+        state.aiResultText = text;
+        state.aiResultTextDirty = false;
+        if (enEl) {
+          enEl.textContent = '🇬🇧 ' + (text || '(no translation)');
+        }
+      } catch (e) {
+        text = '';
+        if (enEl) {
+          enEl.textContent = '⚠ Translation failed';
+        }
+      }
+    } else {
+      // Use pre-existing translated text
+      text = state.aiResultText;
+    }
   }
   if (text) {
     $replyInput.value = text;
     closeAIPopup();
     $replyInput.focus();
+    autoResizeTextarea($replyInput);
   }
 }
 
@@ -927,7 +978,28 @@ function autoResizeTextarea(el) {
 }
 [$replyInput, $aiPrompt, document.getElementById('aiResultZh'), document.getElementById('modalEditText')].forEach(function(ta) {
   if (ta) {
-    ta.addEventListener('input', function() { autoResizeTextarea(ta); });
+    ta.addEventListener('input', function() {
+      autoResizeTextarea(ta);
+      if (ta.id === 'aiResultZh') {
+        const enEl = document.getElementById('aiResultEn');
+        if (enEl) {
+          enEl.style.display = 'none';
+          enEl.textContent = '';
+        }
+        state.aiResultText = '';
+        state.aiResultTextDirty = true;
+      } else if (ta.id === 'modalEditText') {
+        const transEl = document.getElementById('modalTranslation');
+        if (transEl) {
+          transEl.style.display = 'none';
+          transEl.textContent = '';
+        }
+        modalState.currentEn = '';
+        // 清除 AI 卡片的高亮，提示用户已进入人工编辑
+        document.querySelectorAll('#modalOptCards .opt-card').forEach(c => c.classList.remove('selected'));
+        modalState.selectedIdx = -1;
+      }
+    });
   }
 });
 
@@ -1417,13 +1489,14 @@ async function checkWhatsAppStatus() {
 }
 
 // ─── Reply Modal ───────────────────────────────────────────────
-let modalState = { chatId: null, messageId: null, suggestions: [], selectedIdx: -1 };
+let modalState = { chatId: null, messageId: null, suggestions: [], selectedIdx: -1, currentEn: '' };
 
 async function openReplyModal(chatId, messageId) {
   modalState.chatId = chatId;
   modalState.messageId = messageId;
   modalState.suggestions = [];
   modalState.selectedIdx = -1;
+  modalState.currentEn = '';
 
   const modal = document.getElementById('replyModal');
   const preview = document.getElementById('modalMsgPreview');
@@ -1554,8 +1627,16 @@ function selectModalCard(index) {
   autoResizeTextarea(textarea);
   textarea.focus();
 
-  // Clear any previous translation
-  document.getElementById('modalTranslation').style.display = 'none';
+  // Show English translation directly if available
+  const en = typeof s === 'string' ? '' : (s.en || '');
+  modalState.currentEn = en;
+  const transEl = document.getElementById('modalTranslation');
+  if (en) {
+    transEl.textContent = '🇬🇧 ' + en;
+    transEl.style.display = 'block';
+  } else {
+    transEl.style.display = 'none';
+  }
 
   // Highlight selected
   document.querySelectorAll('#modalOptCards .opt-card').forEach(c => c.classList.remove('selected'));
@@ -1573,51 +1654,79 @@ async function translateModalText() {
   el.textContent = '⏳ Translating...';
   el.style.display = 'block';
   try {
-    const res = await fetch('/api/custom', {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId: modalState.chatId || state.activeChat, prompt: 'Translate the following Chinese text to English. Only output the translation, nothing else:\n\n' + zhText }),
+      body: JSON.stringify({ chatId: modalState.chatId || state.activeChat, text: zhText }),
     });
     const data = await res.json();
-    const en = data.reply || data.zh || '';
+    const en = data.translation || '';
+    modalState.currentEn = en;
     el.textContent = '🇬🇧 ' + (en || '(no translation)');
   } catch (e) {
     el.textContent = '⚠ Translation failed';
   }
 }
 
+let isSendingModalReply = false;
 async function sendModalReply(lang) {
+  if (isSendingModalReply) return;
+
   const textarea = document.getElementById('modalEditText');
   const zhText = textarea.value.trim();
   if (!zhText) return;
 
+  isSendingModalReply = true;
+
+  const btnEn = document.querySelector('#replyModal .btn-en');
+  const btnZh = document.querySelector('#replyModal .btn-zh');
+  const origEnText = btnEn ? btnEn.textContent : '';
+  const origZhText = btnZh ? btnZh.textContent : '';
+
+  if (btnEn) { btnEn.disabled = true; if (lang === 'en') btnEn.textContent = 'Sending...'; }
+  if (btnZh) { btnZh.disabled = true; if (lang === 'zh') btnZh.textContent = 'Sending...'; }
+
   let text = zhText;
 
-  if (lang === 'en') {
-    // Use the translated English from modalTranslation if available
-    const transEl = document.getElementById('modalTranslation');
-    const transText = (transEl.textContent || '').replace('🇬🇧 ', '').trim();
-    if (transText && transText !== '(no translation)' && transText !== '⚠ Translation failed' && transText.indexOf('⏳') !== 0) {
-      text = transText;
-    } else {
-      // No translation available — auto-translate
-      try {
-        const res = await fetch('/api/custom', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatId: modalState.chatId, prompt: 'Translate to English:\n\n' + zhText }),
-        });
-        const data = await res.json();
-        text = data.reply || data.zh || zhText;
-      } catch (e) {
-        text = zhText; // fallback to Chinese
+  try {
+    if (lang === 'en') {
+      const transText = (modalState.currentEn || '').trim();
+      if (transText && transText !== '(no translation)' && transText !== '⚠ Translation failed') {
+        text = transText;
+      } else {
+        // No translation available or translating — auto-translate synchronously
+        const el = document.getElementById('modalTranslation');
+        if (el) {
+          el.textContent = '⏳ Translating...';
+          el.style.display = 'block';
+        }
+        try {
+          const res = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chatId: modalState.chatId || state.activeChat, text: zhText }),
+          });
+          const data = await res.json();
+          text = data.translation || zhText;
+          modalState.currentEn = text;
+          if (el) el.textContent = '🇬🇧 ' + (text || '(no translation)');
+        } catch (e) {
+          text = zhText; // fallback to Chinese
+          if (el) el.textContent = '⚠ Translation failed';
+        }
       }
     }
-  }
 
-  await apiSend(modalState.chatId, text);
-  closeReplyModal();
-  collapseAllSuggestions();
+    await apiSend(modalState.chatId, text);
+    closeReplyModal();
+    collapseAllSuggestions();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    isSendingModalReply = false;
+    if (btnEn) { btnEn.disabled = false; btnEn.textContent = origEnText; }
+    if (btnZh) { btnZh.disabled = false; btnZh.textContent = origZhText; }
+  }
 }
 
 function closeAIPopup() {

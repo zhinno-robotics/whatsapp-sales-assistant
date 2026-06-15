@@ -108,7 +108,16 @@ async function createClient(handlers) {
 
   async function handleMessage(msg) {
     try {
-      if (msg.fromMe) return;
+      const myJid = client.info && client.info.wid ? client.info.wid._serialized : null;
+      const myNumber = myJid ? myJid.split('@')[0] : null;
+      const isFromMe = msg.fromMe === true || 
+                       (msg.id && msg.id.fromMe === true) || 
+                       (myJid && (msg.from === myJid || msg.author === myJid)) ||
+                       (myNumber && (
+                         (msg.from && msg.from.includes(myNumber)) || 
+                         (msg.author && msg.author.includes(myNumber))
+                       ));
+      if (isFromMe) return;
       if (msg.type === 'vcard') return; // skip contact cards
 
       const isText = msg.type === 'chat' || msg.type === 'text';
@@ -149,7 +158,6 @@ async function createClient(handlers) {
   }
 
   client.on('message_create', handleMessage);
-  client.on('message', handleMessage); // backup: also listen on 'message'
 
   // ============ Shutdown ============
 

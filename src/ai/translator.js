@@ -81,4 +81,43 @@ async function translate(text, direction = 'to_user') {
   }
 }
 
-module.exports = { chatCompletion, detectLanguage, translate };
+/**
+ * Translate reply draft referencing history context
+ */
+async function translateWithContext(text, history) {
+  if (!text || text.trim().length === 0) return text;
+
+  if (!history || history.length === 0) {
+    console.log('[translator] History is empty, falling back to direct translation.');
+    return await translate(text, 'to_customer');
+  }
+
+  const { formatMessagesForPrompt } = require('./prompts');
+  const context = formatMessagesForPrompt(history);
+
+  let result = text;
+  try {
+    result = await chatCompletion([
+      { role: 'system', content: PROMPTS.TRANSLATE_WITH_CONTEXT_SYSTEM },
+      { role: 'user', content: PROMPTS.TRANSLATE_WITH_CONTEXT_USER(context, text.trim()) },
+    ], 0.2, 800);
+  } catch (err) {
+    console.error(`[translator] translateWithContext LLM call failed:`, err.message);
+  }
+
+  // 双保险检查：如果返回的结果里中文比例仍然很高，或者和原输入完全一致，或者含有“Translate this”，说明大模型没有正常完成翻译
+  const resultCjkCount = (result.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+  if (resultCjkCount > result.length * 0.3 || result.trim() === text.trim() || result.toLowerCase().includes('translate this')) {
+    console.log('[translator] translateWithContext returned Chinese or invalid text. Fallback to standard translate.');
+    try {
+      return await translate(text, 'to_customer');
+    } catch (err) {
+      console.error(`[translator] fallback translate failed:`, err.message);
+      return text;
+    }
+  }
+
+  return result;
+}
+
+module.exports = { chatCompletion, detectLanguage, translate, translateWithContext };

@@ -725,6 +725,24 @@ async function handlePageEvent(type, data) {
       console.log('[wasap-bg] Message updated:', data.messageId);
       break;
 
+    case 'active_chat_changed':
+      console.log('[wasap-bg] Active chat changed:', data.chatId);
+      if (data.chatId && data.chat) {
+        const convos = await Storage.getConversations();
+        if (!convos[data.chatId]) {
+          convos[data.chatId] = {
+            chatId: data.chatId,
+            name: data.chat.name,
+            number: data.chat.number,
+            lastActivity: data.chat.timestamp,
+            isGroup: data.chat.isGroup,
+          };
+          await Storage.setConversations(convos);
+        }
+      }
+      broadcastToSidepanel('active_chat_changed', data);
+      break;
+
     case 'chat_opened':
       pendingOpenChats.delete(data.chatId);
       broadcastToSidepanel('chat_opened', data);
@@ -1012,6 +1030,11 @@ async function handleSidepanelCommand(msg) {
       break;
     }
 
+    case 'sidebar_back': {
+      sendToPage('sidebar_back', {});
+      break;
+    }
+
     case 'send_translated': {
       const { chatId, text } = params;
       const config = await Storage.getConfig();
@@ -1029,15 +1052,15 @@ async function handleSidepanelCommand(msg) {
         const enText = await AI.translate(text, 'to_customer', config);
         await incrementDailyUsage();
         sendToPage('send_message', { chatId, text: enText });
-        const sentMsg = {
+        const sentMsg2 = {
           messageId: 'sent_' + Date.now(),
           chatId,
           fromMe: true,
           body: enText,
           timestamp: Math.floor(Date.now() / 1000),
         };
-        await saveMessage(sentMsg);
-        broadcastToSidepanel('message_sent', sentMsg);
+        await saveMessage(sentMsg2);
+        broadcastToSidepanel('message_sent', sentMsg2);
         // Broadcast updated quota
         const updatedQuota = await checkQuota(config);
         broadcastToSidepanel('quota_info', updatedQuota);
@@ -1048,7 +1071,7 @@ async function handleSidepanelCommand(msg) {
     }
 
     case 'translate_message': {
-      const { messageId, body } = params;
+      const { messageId, body, direction } = params;
       const config = await Storage.getConfig();
       if (!config.llm.apiKey) {
         sidepanelPort?.postMessage({ type: 'translate_error', data: { messageId, error: 'No API key configured' } });
@@ -1061,9 +1084,14 @@ async function handleSidepanelCommand(msg) {
         return;
       }
       try {
-        const translation = await AI.translate(body, 'to_user', config);
+        // Use direction param if provided; default to 'to_user' for normal messages,
+        // 'to_customer' for modal/AI temp translations
+        const translateDirection = direction || 'to_user';
+        const translation = await AI.translate(body, translateDirection, config);
         await incrementDailyUsage();
-        await Storage.setTranslation(messageId, translation);
+        if (messageId !== 'modal_temp' && messageId !== 'ai_temp') {
+          await Storage.setTranslation(messageId, translation);
+        }
         sidepanelPort?.postMessage({ type: 'translation_ready', data: { messageId, translation } });
         // Broadcast updated quota
         const updatedQuota = await checkQuota(config);

@@ -19,5 +19,25 @@
 </head>
 <body>
 <iframe id="app-frame" src="http://localhost:3000/?sidebar=1"></iframe>
+<script>
+  window.addEventListener('message', async (event) => {
+    if (event.data && event.data.action === 'open_chat') {
+      const { chatId, number } = event.data;
+      const phone = number || chatId.split('@')[0];
+      if (phone && /^\d+$/.test(phone)) {
+        try {
+          const tabs = await chrome.tabs.query({ url: '*://web.whatsapp.com/*' });
+          if (tabs && tabs.length > 0) {
+            // Find active tab, fallback to first matching tab
+            let tab = tabs.find(t => t.active) || tabs[0];
+            chrome.tabs.update(tab.id, { url: `https://web.whatsapp.com/send?phone=${phone}`, active: true });
+          }
+        } catch (e) {
+          console.error('[sidepanel] Navigation failed:', e);
+        }
+      }
+    }
+  });
+</script>
 </body>
 </html>

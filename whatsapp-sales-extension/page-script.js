@@ -713,6 +713,62 @@
   }
 
   // ============================================================
+  // Active Chat Sync Monitoring
+  // ============================================================
+
+  let lastActiveChatId = null;
+
+  function checkActiveChat() {
+    try {
+      if (!window.Store?.Chat) return;
+      const models = getChatModels();
+      const activeChat = models.find(c => c.active === true || c.__x_active === true);
+      if (activeChat) {
+        const chatId = getSerializedChatId(activeChat);
+        if (chatId && chatId !== lastActiveChatId) {
+          lastActiveChatId = chatId;
+          const serialized = serializeChat(activeChat);
+          console.log('[wasap-page] Active chat changed:', chatId, serialized?.name);
+          emitToContent('active_chat_changed', { chatId, chat: serialized });
+        }
+      } else {
+        if (lastActiveChatId !== null) {
+          lastActiveChatId = null;
+          emitToContent('active_chat_changed', { chatId: null, chat: null });
+        }
+      }
+    } catch (e) {
+      console.error('[wasap-page] checkActiveChat error:', e.message);
+    }
+  }
+
+  function setupActiveChatListener() {
+    if (!window.Store?.Chat) return;
+
+    try {
+      // Listen to Backbone events
+      window.Store.Chat.on('change:active', (chat, active) => {
+        if (active) {
+          checkActiveChat();
+        }
+      });
+
+      window.Store.Chat.on('change', (chat) => {
+        if (chat && (chat.active === true || chat.__x_active === true)) {
+          checkActiveChat();
+        }
+      });
+      console.log('[wasap-page] Active chat event listeners installed');
+    } catch (e) {
+      console.warn('[wasap-page] Failed to bind Backbone events for active chat:', e.message);
+    }
+
+    // Polling double insurance, runs every second
+    setInterval(checkActiveChat, 1000);
+    console.log('[wasap-page] Active chat polling poller installed');
+  }
+
+  // ============================================================
   // Command Handler (from content.js)
   // ============================================================
 
@@ -1088,6 +1144,12 @@
         break;
       }
 
+      case 'sidebar_back': {
+        lastActiveChatId = null;
+        console.log('[wasap-page] Sidebar went back, resetting lastActiveChatId cache');
+        break;
+      }
+
       default:
         console.warn('[wasap-page] Unknown command:', action);
     }
@@ -1179,6 +1241,7 @@
 
     installAudioContextHook();
     startMessageMonitoring();
+    setupActiveChatListener();
     emitToContent('ready', {});
   });
 

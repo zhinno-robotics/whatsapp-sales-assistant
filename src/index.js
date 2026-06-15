@@ -8,7 +8,7 @@ const http = require('http');
 const chalk = require('chalk');
 const config = require('./config');
 const { createClient } = require('./whatsapp/client');
-const { processIncoming, processCustomReply, processHistoricalMessage } = require('./ai/index');
+const { processIncoming, processCustomReply, processHistoricalMessage, translateReply, translateReplyWithContext } = require('./ai/index');
 const store = require('./db/store');
 const { validateLicense } = require('./license');
 
@@ -265,14 +265,30 @@ app.post('/api/send', async (req, res) => {
   if (!chatId || !text) return res.status(400).json({ error: 'chatId and text required' });
 
   try {
-    // Save to DB
-    store.saveMessage(chatId, `out_${Date.now()}`, 'me', text, Math.floor(Date.now() / 1000));
-
     // Send via WhatsApp
-    await waClient.sendMessage(chatId, text);
+    const sentMsg = await waClient.sendMessage(chatId, text);
+    const timestamp = (sentMsg && sentMsg.timestamp) ? sentMsg.timestamp : Math.floor(Date.now() / 1000);
+    const msgId = (sentMsg && sentMsg.id && sentMsg.id._serialized) ? sentMsg.id._serialized : `out_${Date.now()}`;
 
-    broadcast('message_sent', { chatId, text, timestamp: Math.floor(Date.now() / 1000) });
+    // Save to DB with real message ID and timestamp
+    store.saveMessage(chatId, msgId, 'me', text, timestamp);
+
+    broadcast('message_sent', { chatId, text, timestamp, messageId: msgId });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Translate a Chinese reply text to English with context
+app.post('/api/translate', async (req, res) => {
+  const { chatId, text } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+
+  try {
+    const history = chatId ? store.getHistory(chatId, config.contextWindow) : [];
+    const translation = await translateReplyWithContext(text, history);
+    res.json({ translation });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -489,6 +505,13 @@ app.post('/api/generate-keys-batch', (req, res) => {
 async function onWhatsAppMessage(msg) {
   // Skip channels, broadcasts, newsletters
   if (isChannelChat(msg.chatId)) return;
+
+  // Prevent duplicate insertion (e.g. self messages captured via message_create)
+  const existing = store.getHistory(msg.chatId, 50);
+  if (existing.some(m => m.message_id === msg.messageId)) {
+    console.log(`[server] Message ${msg.messageId} already exists in DB. Skipping duplicated event.`);
+    return;
+  }
 
   // Save to DB
   const bodyText = msg.isVoice ? '' : (msg.body || '');

@@ -1,7 +1,7 @@
 /**
  * AI service orchestrator — coordinates translation and suggestion generation
  */
-const { detectLanguage, translate } = require('./translator');
+const { detectLanguage, translate, translateWithContext } = require('./translator');
 const { generateSuggestions, generateCustomReply } = require('./suggester');
 
 /**
@@ -49,9 +49,17 @@ async function translateReply(text) {
   return translate(text, 'to_customer');
 }
 
+/**
+ * Translate user's draft reply using conversation history context
+ */
+async function translateReplyWithContext(text, history) {
+  return translateWithContext(text, history);
+}
+
 module.exports = {
   processIncoming,
   processHistoricalMessage: processIncoming, // alias — same logic
   processCustomReply,
   translateReply,
+  translateReplyWithContext,
 };
