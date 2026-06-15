@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Sales Copilot",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Smart AI replies & real-time translation for WhatsApp Web — B2B sales communication made easy",
   "permissions": [
     "storage",
