@@ -302,6 +302,21 @@ function handleSentMessage(msg) {
 
 function handleTranslationReady(data) {
   state.translatingMessages.delete(data.messageId);
+  if (data.messageId === 'input_temp') {
+    const $replyInput = document.getElementById('replyInput');
+    if ($replyInput) {
+      $replyInput.value = data.translation;
+      autoResizeTextarea($replyInput);
+    }
+    const btn = document.getElementById('btnTransInput');
+    if (btn) {
+      btn.innerHTML = '🌐 翻译';
+      btn.disabled = false;
+    }
+    isTranslatingInput = false;
+    if ($replyInput) $replyInput.focus();
+    return;
+  }
   if (data.messageId === 'modal_temp') {
     const $trans = document.getElementById('modalTranslation');
     if ($trans) {
@@ -336,6 +351,18 @@ function handleTranslationReady(data) {
 
 function handleTranslateError(data) {
   state.translatingMessages.delete(data.messageId);
+  if (data.messageId === 'input_temp') {
+    alert('翻译失败: ' + (data.error || 'Unknown error'));
+    const btn = document.getElementById('btnTransInput');
+    if (btn) {
+      btn.innerHTML = '🌐 翻译';
+      btn.disabled = false;
+    }
+    isTranslatingInput = false;
+    const $replyInput = document.getElementById('replyInput');
+    if ($replyInput) $replyInput.focus();
+    return;
+  }
   if (state.activeChat && state.messages[state.activeChat]) {
     const msg = state.messages[state.activeChat].find(m => m.messageId === data.messageId);
     if (msg) {
@@ -690,6 +717,25 @@ function translateAIResult() {
   });
 }
 
+let isTranslatingInput = false;
+function translateInput() {
+  if (isTranslatingInput) return;
+  const $replyInput = document.getElementById('replyInput');
+  const text = $replyInput.value.trim();
+  if (!text) return;
+
+  isTranslatingInput = true;
+  const btn = document.getElementById('btnTransInput');
+  btn.innerHTML = '⏳';
+  btn.disabled = true;
+
+  sendToBg('translate_message', {
+    messageId: 'input_temp',
+    body: text,
+    direction: 'to_customer',
+  });
+}
+
 function sendAIResult(target) {
   if (!state.activeChat) return;
   const userText = document.getElementById('aiResultZh').value.trim();
@@ -970,6 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('toggleTheme').addEventListener('click', toggleTheme);
   document.getElementById('backBtn').addEventListener('click', goBack);
   document.getElementById('aiPopupBtn').addEventListener('click', openAIPopup);
+  document.getElementById('btnTransInput').addEventListener('click', translateInput);
   document.getElementById('sendReplyBtn').addEventListener('click', sendReply);
   document.getElementById('aiCancelBtn').addEventListener('click', closeAIPopup);
   document.getElementById('aiGenBtn').addEventListener('click', generateAI);

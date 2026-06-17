@@ -238,6 +238,7 @@ html.light .msg .trans { background: rgba(0, 168, 132, .12); color: #111b21; }
 #replyBox button:active { opacity: .7; }
 #replyBox .btn-send { background: var(--send-btn); color: var(--send-btn-text); }
 #replyBox .btn-ai { background: var(--ai-btn-bg); color: var(--ai-btn-text); border: 1px solid var(--border); }
+#replyBox .btn-trans-input { background: var(--ai-btn-bg); color: var(--ai-btn-text); border: 1px solid var(--border); }
 
 /* === AI Popup === */
 #aiPopup {
@@ -415,6 +416,7 @@ html.light .msg .trans { background: rgba(0, 168, 132, .12); color: #111b21; }
     <div id="replyBox">
       <textarea id="replyInput" placeholder="Type your reply... (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
       <button class="btn-ai" id="aiPopupBtn" title="AI 帮你写回复">✨ AI</button>
+      <button class="btn-trans-input" id="btnTransInput" title="直接翻译输入内容">🌐 翻译</button>
       <button class="btn-send" id="sendReplyBtn">Send</button>
     </div>
   </div>

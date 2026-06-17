@@ -1089,7 +1089,7 @@ async function handleSidepanelCommand(msg) {
         const translateDirection = direction || 'to_user';
         const translation = await AI.translate(body, translateDirection, config);
         await incrementDailyUsage();
-        if (messageId !== 'modal_temp' && messageId !== 'ai_temp') {
+        if (messageId !== 'modal_temp' && messageId !== 'ai_temp' && messageId !== 'input_temp') {
           await Storage.setTranslation(messageId, translation);
         }
         sidepanelPort?.postMessage({ type: 'translation_ready', data: { messageId, translation } });

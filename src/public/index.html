@@ -58,6 +58,8 @@ a { color: #4fc3f7; }
 #replyBox .btn-send:hover { background: #651fff; }
 #replyBox .btn-ai { background: #1e1e1e; color: #aaa; border: 1px solid #444; }
 #replyBox .btn-ai:hover { background: #2a2a2a; color: #fff; }
+#replyBox .btn-trans-input { background: #1e1e1e; color: #aaa; border: 1px solid #444; }
+#replyBox .btn-trans-input:hover { background: #2a2a2a; color: #fff; }
 
 /* Popup / overlay */
 #aiPopup { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.6); z-index: 100; justify-content: center; align-items: center; }
@@ -252,6 +254,7 @@ html.compact #replyBox textarea:focus { border-color: var(--send-btn); }
 html.compact #replyBox button { padding: 6px 10px; font-size: 12px; white-space: nowrap; border-radius: 8px; border: none; cursor: pointer; }
 html.compact #replyBox .btn-send { background: var(--send-btn); color: var(--send-btn-text); }
 html.compact #replyBox .btn-ai { background: var(--ai-btn-bg); color: var(--ai-btn-text); border: 1px solid var(--border); }
+html.compact #replyBox .btn-trans-input { background: var(--ai-btn-bg); color: var(--ai-btn-text); border: 1px solid var(--border); }
 
 /* === Modals — WhatsApp themed === */
 
@@ -417,6 +420,7 @@ html.compact #compactStatusBar { display: none !important; }
   <div id="replyBox" style="display:none">
     <textarea id="replyInput" placeholder="Type your reply... (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
     <button class="btn-ai" onclick="openAIPopup()" title="AI 帮你写回复">✨ AI</button>
+    <button class="btn-trans-input" id="btnTransInput" onclick="translateInput()" title="直接翻译输入内容">🌐 翻译</button>
     <button class="btn-send" onclick="sendReply()">Send</button>
   </div>
 </div>
@@ -836,6 +840,42 @@ function sendReply() {
   $replyInput.value = '';
   autoResizeTextarea($replyInput);
   collapseAllSuggestions();
+}
+
+let isTranslatingInput = false;
+async function translateInput() {
+  if (isTranslatingInput) return;
+  const text = $replyInput.value.trim();
+  if (!text) return;
+  
+  isTranslatingInput = true;
+  const btn = document.getElementById('btnTransInput');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '⏳';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: state.activeChat || '', text: text }),
+    });
+    const data = await res.json();
+    if (data.translation) {
+      $replyInput.value = data.translation;
+      autoResizeTextarea($replyInput);
+    } else if (data.error) {
+      alert('翻译失败: ' + data.error);
+    }
+  } catch (e) {
+    console.error('Translation failed:', e);
+    alert('翻译出错，请检查网络或配置');
+  } finally {
+    isTranslatingInput = false;
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    $replyInput.focus();
+  }
 }
 
 // AI Popup
